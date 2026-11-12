@@ -1,0 +1,7 @@
+# Studio lock files and Rojo artifacts
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+__pycache__/
+.DS_Store
+Thumbs.db

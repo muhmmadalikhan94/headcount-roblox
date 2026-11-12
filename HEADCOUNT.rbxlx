@@ -1,0 +1,4549 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+<External>null</External>
+<External>nil</External>
+<Item class="ReplicatedStorage" referent="RBX00000004">
+<Properties>
+<string name="Name">ReplicatedStorage</string>
+</Properties>
+<Item class="Folder" referent="RBX00000003">
+<Properties>
+<string name="Name">Shared</string>
+</Properties>
+<Item class="ModuleScript" referent="RBX00000001">
+<Properties>
+<string name="Name">Config</string>
+<ProtectedString name="Source"><![CDATA[-- HEADCOUNT: every tunable number in the game lives here.
+-- Change values, press Play, feel the difference. No other file needs touching.
+
+local Config = {}
+
+Config.GameName = "HEADCOUNT"
+Config.Version = "1.0.0"
+
+------------------------------------------------------------------ Movement
+Config.WalkSpeed = 12
+Config.SprintSpeed = 21
+Config.StaminaMax = 100
+Config.StaminaDrain = 20 -- per second while sprinting
+Config.StaminaRegen = 15 -- per second while not sprinting
+
+------------------------------------------------------------------ Flare gun
+Config.StartingFlares = 4
+Config.SurvivorKitBonusFlares = 2 -- extra starting flares for Survivor Kit owners
+Config.FlareBoxAmount = 2
+Config.FlareBoxRespawn = 75 -- seconds before an emptied box refills
+Config.FlareBoxRespawnFinale = 25
+Config.FlareCooldown = 0.6
+Config.FlareRange = 240
+Config.FlareSpeed = 190 -- studs per second (visual travel time)
+Config.FlareHitRadius = 4.5 -- generous aim assist around The Twelfth
+
+------------------------------------------------------------------ The Twelfth
+Config.Monster = {
+	BaseSpeed = 11.5, -- players walk at 12 and sprint at 21
+	SpeedPerPage = 1.0, -- every journal page makes it angrier
+	FinaleSpeed = 20,
+	StunTime = 2,
+	HitsToDown = 4,
+	RespawnTime = 40,
+	FinaleRespawnTime = 20,
+	CatchRange = 4.5,
+	HuntDuration = 45,
+	HuntIntervalMin = 60, -- seconds between random hunts (after the mess hall)
+	HuntIntervalMax = 100,
+	LampFlickerRange = 50,
+	LampOffRange = 24,
+}
+
+------------------------------------------------------------------ Story
+Config.TotalPages = 8
+Config.FusesNeeded = 3
+Config.RosterHitsNeeded = 3
+Config.WipeGraceTime = 8 -- seconds to buy a Second Chance before "Counted" ending
+Config.IntermissionTime = 14
+
+------------------------------------------------------------------ Monetization
+-- Create these on create.roblox.com (your experience > Monetization),
+-- then paste the numeric IDs here. 0 = not set up yet.
+Config.GamePasses = {
+	SurvivorKit = 0, -- +2 starting flares, stronger flashlight
+	VIP = 0, -- gold flashlight beam + [VIP] chat tag
+}
+
+Config.Products = {
+	SecondChance = 0, -- revive instantly after being counted
+	FlarePack = 0, -- +5 flares right now
+}
+Config.FlarePackAmount = 5
+
+-- Badges (create under your experience > Badges, paste IDs). 0 = skip.
+Config.Badges = {
+	Welcome = 0,
+	FirstPage = 0,
+	KnockedDown = 0,
+	Escaped = 0,
+	Counted = 0,
+	SecretEnding = 0,
+}
+
+------------------------------------------------------------------ Sounds
+-- Built-in rbxasset sounds work everywhere but are placeholders.
+-- For real horror audio: Studio > Toolbox > Audio, search the name,
+-- right-click a Roblox-uploaded sound > Copy Asset ID, paste as "rbxassetid://ID".
+-- Empty Id = that sound is skipped.
+Config.Sounds = {
+	Whistle = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 1, Speed = 1.25, Range = 400 },
+	FlareFire = { Id = "rbxasset://sounds/Rocket shot.wav", Volume = 0.6, Speed = 1.4 },
+	Pickup = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, Speed = 0.6 },
+	Splash = { Id = "rbxasset://sounds/impact_water.mp3", Volume = 1, Speed = 0.5 },
+	Knock = { Id = "rbxasset://sounds/action_jump_land.mp3", Volume = 1, Speed = 0.6 },
+	Door = { Id = "rbxasset://sounds/action_jump_land.mp3", Volume = 0.8, Speed = 0.4 },
+	Screech = { Id = "", Volume = 1, Speed = 1 }, -- try "monster scream"
+	Jumpscare = { Id = "", Volume = 1, Speed = 1 }, -- try "jumpscare"
+	Sting = { Id = "", Volume = 0.8, Speed = 1 }, -- try "horror sting"
+	Radio = { Id = "", Volume = 0.4, Speed = 1 }, -- try "radio static"
+	Generator = { Id = "", Volume = 0.6, Speed = 1 }, -- try "generator start"
+	Ambience = { Id = "", Volume = 0.35, Speed = 1 }, -- try "night forest ambience" (loops)
+	Heartbeat = { Id = "", Volume = 0.8, Speed = 1 }, -- try "heartbeat" (loops, louder when it's close)
+}
+
+return Config
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX00000002">
+<Properties>
+<string name="Name">Story</string>
+<ProtectedString name="Source"><![CDATA[-- HEADCOUNT: every line of story text. Edit freely; the server reads scenes by name.
+-- Scene lines are { speaker, text, seconds }. Speakers are defined in Story.Speakers.
+
+local Story = {}
+
+Story.Quote = "\"Stay with your group. Wait for headcount. Never, ever answer the whistle.\""
+Story.QuoteSource = "Camp Hollow Pines rulebook, 1987"
+
+Story.Speakers = {
+	MARCY = { Label = "MARCY (radio)", Color = Color3.fromRGB(150, 225, 165), Radio = true },
+	THOUGHT = { Label = "YOU", Color = Color3.fromRGB(225, 225, 225), Italic = true },
+	TAPE = { Label = "TAPE", Color = Color3.fromRGB(215, 195, 150) },
+	WRONG = { Label = "TAPE", Color = Color3.fromRGB(255, 60, 60) },
+	PA = { Label = "PA SYSTEM", Color = Color3.fromRGB(255, 130, 95) },
+	TWELFTH = { Label = "", Color = Color3.fromRGB(255, 35, 35) },
+	CRANE = { Label = "VOICE", Color = Color3.fromRGB(200, 175, 255), Radio = true },
+	SOUND = { Label = "", Color = Color3.fromRGB(175, 175, 175), Italic = true },
+}
+
+Story.Chapters = {
+	[0] = "PROLOGUE: BREAKDOWN",
+	[1] = "CHAPTER 1: THE GATE",
+	[2] = "CHAPTER 2: THE CABINS",
+	[3] = "CHAPTER 3: THE LAKE",
+	[4] = "CHAPTER 4: THE MESS HALL",
+	[5] = "CHAPTER 5: THE DIRECTOR'S OFFICE",
+	[6] = "CHAPTER 6: THE FLAGPOLE",
+}
+
+Story.Pages = {
+	[1] = {
+		Title = "Day 1",
+		Text = "The kids arrived today. Eleven of them, all sunburned and loud. I counted them twice at the flagpole. Director Crane laughed and said I take headcount too seriously. You can never be too careful out here.",
+	},
+	[2] = {
+		Title = "Day 4",
+		Text = "Headcount said twelve tonight. There are only eleven kids. I counted again: twelve. I checked every face. None of the kids see the extra one. But I do. It stands at the very back of the line.",
+	},
+	[3] = {
+		Title = "Day 6",
+		Text = "It copies me. When I blow my whistle, it blows one too, three times, always three. Last night I saw it standing by the trees with the roster in its hands. It was holding a pencil.",
+	},
+	[4] = {
+		Title = "Day 9",
+		Text = "Two kids are gone. The others say they went home early. They didn't. Their parents never came. I checked the roster: their names were crossed out. In MY handwriting. I never wrote that.",
+	},
+	[5] = {
+		Title = "Day 10",
+		Text = "I think it's trying to take my job. It wants to be the counselor. It's doing headcount now, and every time it counts someone, they stop being here. Fire keeps it back. I'm keeping the campfire burning all night.",
+	},
+	[6] = {
+		Title = "Day 13",
+		Text = "Three kids left. I tried to drive them out. The road just looped back to the gate, over and over, like the camp won't let go. It won't let us leave until the count is finished.",
+	},
+	[7] = {
+		Title = "Day 14",
+		Text = "I understand now. It doesn't want the kids. It wants the ROSTER to be right. It's tied to that list. As long as the roster exists, it can't die. Twelve names, twelve at the flagpole. If someone fills the last spot, maybe it stops.",
+	},
+	[8] = {
+		Title = "Last entry",
+		Text = "I'm going to sign my name on the last line. Maybe that finishes the count. If someone ever reads this: DON'T sign. Burn it. Fire is the only thing it fears. And if you hear three whistles... RUN.",
+	},
+	[9] = {
+		Title = "From the desk of Director W. Crane",
+		Text = "The camp has always needed a counselor. When this one is gone, it will need another. The roster always fills itself. I am sorry. I signed first.",
+		Secret = true,
+	},
+}
+
+Story.RosterNames = {
+	"Danny Ortiz",
+	"Becca Lyle",
+	"Tommy Pruitt",
+	"Jen Akers",
+	"Lucas Bram",
+	"Kimmy Shaw",
+	"Owen Healy",
+	"Rosa Delgado",
+	"Pete Varga",
+	"Annie Coyle",
+	"Sam Whitlock",
+}
+
+Story.Scenes = {
+	Prologue = {
+		{ "THOUGHT", "No signal. No gas. Perfect.", 3.5 },
+	},
+	KitOpened = {
+		{ "THOUGHT", "Emergency kit. Flares. Better than nothing.", 3.5 },
+	},
+	PrologueWhistle = {
+		{ "SOUND", "*A whistle. Three short blasts.*", 3.5 },
+	},
+	GateArrive = {
+		{ "THOUGHT", "The bars are bent apart. Something big squeezed through... from the inside.", 4.5 },
+		{ "THOUGHT", "'Stay with your... counselor'? Someone carved that in.", 4 },
+	},
+	GateRadio = {
+		{ "MARCY", "Hello? Is someone there? Oh thank God.", 3.5 },
+		{ "MARCY", "Listen to me. You need to keep your voices down. It hears everything.", 4.5 },
+		{ "MARCY", "My name is Marcy. I'm the counselor here.", 3.5 },
+		{ "MARCY", "Don't go back to the road; it just loops back to this gate. I've tried. The only way out is through the camp.", 6 },
+		{ "MARCY", "I kept a journal. The pages got scattered. If you find them, you'll understand what it is.", 5 },
+		{ "MARCY", "And please... if you see something tall with red eyes, don't stare at it. Just move.", 5 },
+	},
+	RoadLoop = {
+		{ "THOUGHT", "Wait... this is the gate again. The road led me right back here.", 4 },
+	},
+	RoadLoopRadio = {
+		{ "MARCY", "I told you. The road just loops back to the gate.", 4 },
+	},
+	CabinsArrive = {
+		{ "THOUGHT", "The campfire logs are still warm.", 3 },
+		{ "THOUGHT", "It's too neat. Like the kids just stepped out.", 3.5 },
+	},
+	FirstSighting = {
+		{ "MARCY", "You saw it, didn't you? That's the twelfth one.", 4 },
+		{ "MARCY", "Don't let it get close. It was just watching back then too. At first.", 5 },
+	},
+	FlareBoxes = {
+		{ "MARCY", "Those red boxes... the rescue team left them after we disappeared.", 4.5 },
+		{ "MARCY", "Grab whatever you can. You're going to need it.", 3.5 },
+	},
+	CanoeKnock = {
+		{ "SOUND", "*Knock. Knock. Knock.* (from under the canoe)", 3.5 },
+	},
+	CanoeFlip = {
+		{ "THOUGHT", "Nothing. Just... wet footprints. Leading into the water.", 4 },
+	},
+	LakeWhistle = {
+		{ "SOUND", "*Three whistles. Close this time.*", 2.5 },
+	},
+	LakeChase = {
+		{ "MARCY", "RUN! Get to the boathouse!", 2.5 },
+		{ "MARCY", "Use the flares. It hates fire. It hates it!", 3.5 },
+		{ "MARCY", "Bar the door behind you!", 3 },
+	},
+	SafeInBoathouse = {
+		{ "MARCY", "Okay... okay. You're okay.", 3 },
+		{ "MARCY", "Fire. That's how I kept the kids safe for as long as I did.", 4 },
+		{ "MARCY", "We had campfires every night. It wouldn't come near the light.", 4 },
+	},
+	LakeChaseOver = {
+		{ "MARCY", "It went back into the water... Find my pages in the boathouse. Hurry.", 4.5 },
+	},
+	MessHall = {
+		{ "THOUGHT", "The tables are set for twelve...", 3 },
+		{ "THOUGHT", "One plate is clean. Licked clean.", 3.5 },
+		{ "MARCY", "The generator's in the back room. It needs three fuses. The kids used to hide them to skip chores.", 6 },
+	},
+	PA = {
+		{ "PA", "ATTENTION, CAMPERS.", 2.5 },
+		{ "PA", "PLEASE REPORT TO THE FLAGPOLE FOR HEADCOUNT.", 3.5 },
+		{ "PA", "ATTENDANCE IS... MANDATORY.", 3.5 },
+		{ "MARCY", "That's not me. That's not me! It's learned my voice!", 4 },
+	},
+	KitchenWhistle = {
+		{ "SOUND", "*Three whistles. From the kitchen.*", 2.5 },
+	},
+	BigChase = {
+		{ "MARCY", "Flares! Hit it with everything you've got! Four hits!", 4 },
+	},
+	FirstKill = {
+		{ "MARCY", "Did you... did you KILL it?", 4 },
+	},
+	ItsBack = {
+		{ "SOUND", "*Three whistles, far away.*", 3 },
+		{ "MARCY", "No. It's back. It always comes back.", 3.5 },
+		{ "MARCY", "We need to find out why. Find the rest of my pages.", 4 },
+	},
+	ChaseOverNoKill = {
+		{ "MARCY", "It's gone... for now. Find the rest of my pages. Please.", 4.5 },
+	},
+	Whistles = {
+		{ "SOUND", "*Three whistles echo through the camp.*", 3 },
+	},
+	WhistlesFar = {
+		{ "SOUND", "*Three whistles, far away.*", 3 },
+	},
+	GotKey = {
+		{ "THOUGHT", "A rusty key. The tag says DIRECTOR.", 3.5 },
+		{ "MARCY", "Crane's office is the cabin on the hill. He never let anyone in there.", 4.5 },
+	},
+	OfficeLetter = {
+		{ "MARCY", "Crane knew. He KNEW. He brought it here...", 4.5 },
+	},
+	ToFlagpole = {
+		{ "MARCY", "The flagpole. That's where it does headcount. That's where this ends.", 4.5 },
+	},
+	Roster = {
+		{ "THOUGHT", "Eleven names crossed out in red. And the twelfth...", 4 },
+		{ "MARCY", "That's where I signed. I thought it would end it.", 4 },
+		{ "MARCY", "It didn't. It just... kept me here.", 4 },
+	},
+	FinaleWhistle = {
+		{ "SOUND", "*Three whistles. From every direction at once.*", 3 },
+	},
+	Headcount = {
+		{ "TWELFTH", "Headcount.", 3 },
+	},
+	Finale = {
+		{ "MARCY", "Burn the roster! Hit the roster with a flare!", 3.5 },
+		{ "MARCY", "Stun it first, it won't let the roster burn while it's watching!", 4.5 },
+		{ "MARCY", "I'll keep its attention as long as I can!", 3.5 },
+	},
+	RosterResist = {
+		{ "MARCY", "It won't catch while it's watching! Stun it first!", 3 },
+	},
+	RosterBurning = {
+		{ "MARCY", "It's burning! Again! Hit it again!", 3 },
+	},
+	Victory = {
+		{ "SOUND", "*The Twelfth screams. It burns from the inside out.*", 4 },
+	},
+	EndingA = {
+		{ "MARCY", "It's quiet. It's actually quiet.", 3.5 },
+		{ "MARCY", "Thank you. I think... I think I can go home now.", 4.5 },
+		{ "SOUND", "*The radio fades to static. Back at the gate, the chains have fallen off.*", 5 },
+	},
+	EndingC = {
+		{ "SOUND", "*The walkie crackles one last time. It's not Marcy.*", 4.5 },
+		{ "CRANE", "Camp opens again next summer. We'll need a new counselor.", 4.5 },
+		{ "CRANE", "Welcome aboard.", 3 },
+	},
+	EndingB = {
+		{ "SOUND", "*The sound of a pencil scratching.*", 3.5 },
+		{ "TWELFTH", "Headcount complete.", 4 },
+	},
+	Revived = {
+		{ "MARCY", "Somehow you slipped off the list. Don't let it count you again.", 4 },
+	},
+}
+
+-- %s is the name of the survivor who ends up holding Marcy's whistle (secret ending).
+Story.WhistleLine = "*%s finds the whistle in their hand. They can't let go of it.*"
+
+Story.Endings = {
+	A = { Title = "HEADCOUNT: 0", Subtitle = "Camp Hollow Pines is closed." },
+	B = { Title = "COUNTED", Subtitle = "See you next summer." },
+	C = { Title = "HEADCOUNT: 1", Subtitle = "Applications are now closed." },
+}
+
+return Story
+]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="RBX0000000C">
+<Properties>
+<string name="Name">ServerScriptService</string>
+</Properties>
+<Item class="Folder" referent="RBX0000000B">
+<Properties>
+<string name="Name">Server</string>
+</Properties>
+<Item class="ModuleScript" referent="RBX00000005">
+<Properties>
+<string name="Name">Director</string>
+<ProtectedString name="Source"><![CDATA[-- The Director runs the story: chapters, scripted scares, hunts, respawns and endings.
+-- One "round" is one night at Camp Hollow Pines. When it ends, the camp is rebuilt and it starts again.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Story = require(Shared:WaitForChild("Story"))
+
+local MapBuilder = require(script.Parent.MapBuilder)
+local Monster = require(script.Parent.Monster)
+local Flares = require(script.Parent.Flares)
+local Monetization = require(script.Parent.Monetization)
+
+local M = Config.Monster
+local GameState = ReplicatedStorage -- story state for clients lives in its attributes
+
+local RED = Color3.fromRGB(255, 70, 70)
+local GOLD = Color3.fromRGB(255, 210, 110)
+
+local Director = {}
+
+local Remotes
+local map
+local monster
+local S = {}
+local roundId = 0
+local sceneToken = 0
+local zoneHandlers = {}
+
+local startChapter, startFinale -- defined further down
+
+local function newState()
+	return {
+		Chapter = 0,
+		Checkpoint = "Car",
+		Pages = {},
+		PageCount = 0,
+		Counted = {},
+		CountedNames = {},
+		KitOpened = false,
+		AtGate = false,
+		RadioFound = false,
+		Sighting = false,
+		SightingDone = false,
+		CanoeFlipped = false,
+		LakeChase = false,
+		LakeChaseOver = false,
+		DoorBarred = false,
+		Fuses = 0,
+		GeneratorOn = false,
+		BigChase = false,
+		BigChaseOver = false,
+		FirstKill = false,
+		HasKey = false,
+		OfficeOpen = false,
+		SecretFound = false,
+		AtFlagpole = false,
+		Finale = false,
+		Victory = false,
+		RosterHits = 0,
+		LightsOut = false,
+		HuntsEnabled = false,
+		NextHuntAt = math.huge,
+		RespawnToken = 0,
+		DownedUntil = 0,
+		Ending = nil,
+		WipePending = false,
+		LastResistLine = 0,
+	}
+end
+
+------------------------------------------------------------------ messaging
+
+local function say(speaker, text, seconds, target)
+	seconds = seconds or 3.5
+	if target then
+		Remotes.Dialogue:FireClient(target, speaker, text, seconds)
+	else
+		Remotes.Dialogue:FireAllClients(speaker, text, seconds)
+	end
+	return seconds
+end
+
+-- Plays a scene and yields until it finishes. A newer scene interrupts an older one.
+local function playScene(name)
+	sceneToken += 1
+	local token, r = sceneToken, roundId
+	for _, line in ipairs(Story.Scenes[name]) do
+		if token ~= sceneToken or r ~= roundId then
+			return false
+		end
+		task.wait(say(line[1], line[2], line[3]))
+	end
+	return token == sceneToken and r == roundId
+end
+
+local function runScene(name)
+	task.spawn(playScene, name)
+end
+
+local function sceneFor(player, name)
+	task.spawn(function()
+		for _, line in ipairs(Story.Scenes[name]) do
+			task.wait(say(line[1], line[2], line[3], player))
+		end
+	end)
+end
+
+local function fx(kind, ...)
+	Remotes.Effect:FireAllClients(kind, ...)
+end
+
+local function notify(text, color)
+	Remotes.Notify:FireAllClients(text, color)
+end
+
+local function whistles(pos, distant)
+	fx("Whistles", pos, distant)
+end
+
+local function waitRound(r, seconds)
+	task.wait(seconds)
+	return r == roundId
+end
+
+------------------------------------------------------------------ players
+
+local function aliveTargets()
+	local list = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if not S.Counted[p] then
+			local char = p.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if hum and root and hum.Health > 0 and not root.Anchored then
+				table.insert(list, { Player = p, Root = root })
+			end
+		end
+	end
+	return list
+end
+
+local function nearestTarget(pos)
+	local best, bestDist
+	for _, t in ipairs(aliveTargets()) do
+		local d = (t.Root.Position - pos).Magnitude
+		if not bestDist or d < bestDist then
+			best, bestDist = t, d
+		end
+	end
+	return best, bestDist
+end
+
+local function facingNearest(pos)
+	local t = nearestTarget(pos)
+	if t then
+		local tp = t.Root.Position
+		local flat = Vector3.new(tp.X, pos.Y, tp.Z)
+		if (flat - pos).Magnitude > 0.5 then
+			return CFrame.lookAt(pos, flat)
+		end
+	end
+	return CFrame.new(pos)
+end
+
+local function setCheckpoint(name)
+	S.Checkpoint = name
+	map.Spawn.CFrame = map.Checkpoints[name] * CFrame.new(0, 0.5, 0)
+end
+
+local function spawnPlayer(player)
+	if not player.Parent or not map then
+		return
+	end
+	S.Counted[player] = nil
+	player:SetAttribute("Counted", false)
+	pcall(player.LoadCharacter, player)
+end
+
+local function styleFlashlight(player, beam)
+	local strong = player:GetAttribute("SurvivorKit") == true
+	beam.Range = strong and 64 or 46
+	beam.Brightness = strong and 3.2 or 2.4
+	beam.Color = player:GetAttribute("VIP") and Color3.fromRGB(255, 214, 120) or Color3.fromRGB(255, 244, 225)
+end
+
+local function onCharacter(player, char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	local head = char:WaitForChild("Head", 10)
+	if not hum or not head then
+		return
+	end
+	hum.WalkSpeed = Config.WalkSpeed
+	hum.NameDisplayDistance = 30
+	local beam = Instance.new("SpotLight")
+	beam.Name = "Flashlight"
+	beam.Face = Enum.NormalId.Front
+	beam.Angle = 70
+	beam.Shadows = true
+	styleFlashlight(player, beam)
+	beam.Parent = head
+	if S.KitOpened then
+		Flares.giveGun(player, false)
+	end
+	local r = roundId
+	hum.Died:Connect(function()
+		if S.Counted[player] or S.Ending then
+			return
+		end
+		task.delay(3, function()
+			if r == roundId and player.Parent and player.Character == char and not S.Counted[player] and not S.Ending then
+				spawnPlayer(player)
+			end
+		end)
+	end)
+end
+
+local function reviveCounted()
+	for player in pairs(S.Counted) do
+		if player.Parent then
+			task.spawn(spawnPlayer, player)
+			sceneFor(player, "Revived")
+		end
+	end
+end
+
+local function checkWipe()
+	if S.Ending or S.WipePending or #Players:GetPlayers() == 0 or #aliveTargets() > 0 then
+		return
+	end
+	S.WipePending = true
+	local r = roundId
+	notify("Everyone has been counted...", RED)
+	task.delay(Config.WipeGraceTime, function()
+		if r ~= roundId then
+			return
+		end
+		S.WipePending = false
+		if not S.Ending and #aliveTargets() == 0 then
+			Director.endRound("B")
+		end
+	end)
+end
+
+local function countPlayer(player)
+	if S.Counted[player] or S.Ending or not player.Parent then
+		return
+	end
+	local char = player.Character
+	S.Counted[player] = true
+	player:SetAttribute("Counted", true)
+	table.insert(S.CountedNames, player.DisplayName)
+	Remotes.Effect:FireClient(player, "Jumpscare")
+	fx("Sound", "Screech", monster:GetPosition())
+	notify(player.DisplayName .. " was counted...", RED)
+	Monetization.AwardBadge(player, "Counted")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.Anchored = true
+	end
+	task.delay(1.3, function()
+		if S.Counted[player] and char and player.Character == char then
+			char:Destroy()
+		end
+	end)
+	checkWipe()
+end
+
+function Director.revive(player)
+	if S.Counted[player] and not S.Ending then
+		spawnPlayer(player)
+		notify(player.DisplayName .. " got a Second Chance!", GOLD)
+	else
+		Flares.give(player, 3)
+	end
+	return true
+end
+
+------------------------------------------------------------------ world state
+
+local DARK_BULB = Color3.fromRGB(40, 38, 34)
+
+local function setLamp(l, on)
+	if l.On == on then
+		return
+	end
+	l.On = on
+	l.Light.Enabled = on
+	l.Bulb.Material = on and l.OnMaterial or Enum.Material.SmoothPlastic
+	l.Bulb.Color = on and l.OnColor or DARK_BULB
+end
+
+-- Lamps die whenever The Twelfth is close. If the lamps start going out, run.
+local function lampLoop(r)
+	while r == roundId do
+		local mPos = monster:IsVisible() and monster:GetPosition() or nil
+		for _, l in ipairs(map.Lamps) do
+			local want = not (l.Dead or S.LightsOut or (l.Group == "Hall" and not S.GeneratorOn))
+			if want and mPos then
+				local d = (l.Bulb.Position - mPos).Magnitude
+				if d < M.LampOffRange then
+					want = false
+				elseif d < M.LampFlickerRange then
+					want = math.random() < 0.5
+				end
+			end
+			setLamp(l, want)
+		end
+		task.wait(0.12)
+	end
+end
+
+local function tweenAtmosphere(props, seconds)
+	local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+	if atm then
+		TweenService:Create(atm, TweenInfo.new(seconds, Enum.EasingStyle.Sine), props):Play()
+	end
+end
+
+local function dawn()
+	local info = TweenInfo.new(7, Enum.EasingStyle.Sine)
+	TweenService:Create(Lighting, info, {
+		ClockTime = 6.4,
+		Ambient = Color3.fromRGB(70, 62, 60),
+		OutdoorAmbient = Color3.fromRGB(125, 112, 100),
+	}):Play()
+	tweenAtmosphere({ Density = 0.25, Color = Color3.fromRGB(199, 170, 140), Haze = 1 }, 7)
+	local cc = Lighting:FindFirstChild("HeadcountCC")
+	if cc then
+		TweenService:Create(cc, info, { Saturation = 0, TintColor = Color3.fromRGB(255, 236, 215) }):Play()
+	end
+end
+
+local function hideInteractable(part)
+	part.Transparency = 1
+	part.CanCollide = false
+	for _, c in ipairs(part:GetDescendants()) do
+		if c:IsA("Light") then
+			c.Enabled = false
+		elseif c:IsA("SurfaceGui") then
+			c.Enabled = false
+		end
+	end
+end
+
+------------------------------------------------------------------ objective
+
+local function refreshObjective()
+	local o = ""
+	if S.Finale then
+		o = string.format("BURN THE ROSTER! Stun it with a flare, then hit the roster with another (%d/%d)", S.RosterHits, Config.RosterHitsNeeded)
+	elseif S.Chapter == 0 then
+		o = S.KitOpened and "Walk up the road to the camp and find help." or "Check the emergency kit in the car's trunk."
+	elseif S.Chapter == 1 then
+		if S.RadioFound then
+			o = "Find Marcy's journal page on the gate."
+		elseif S.AtGate then
+			o = "Pick up the walkie-talkie hanging on the gate."
+		else
+			o = "Walk up the road to the camp and find help."
+		end
+	elseif S.Chapter == 2 then
+		o = "Search the cabins around the campfire for Marcy's pages."
+	elseif S.Chapter == 3 then
+		if S.LakeChase and not S.LakeChaseOver then
+			o = "RUN to the boathouse at the end of the dock! Bar the door!"
+		elseif S.LakeChaseOver then
+			o = "Search the boathouse for Marcy's pages."
+		else
+			o = "Head east to the lake."
+		end
+	elseif S.Chapter == 4 then
+		if not S.GeneratorOn then
+			if S.Fuses >= Config.FusesNeeded then
+				o = "Start the generator in the back room of the mess hall."
+			else
+				o = string.format("Mess hall (west of camp): find fuses for the generator (%d/%d)", S.Fuses, Config.FusesNeeded)
+			end
+		elseif S.BigChase and not S.BigChaseOver then
+			o = "SURVIVE! Flares stun it. 4 hits knock it down."
+		else
+			o = "Find Marcy's pages in the kitchen and the generator room."
+		end
+	elseif S.Chapter == 6 then
+		o = S.AtFlagpole and "Take the page clipped behind the roster." or "Head north to the flagpole."
+		if S.HasKey and not S.SecretFound then
+			o ..= "\n(Optional) Unlock the Director's office on the hill."
+		end
+	end
+	GameState:SetAttribute("Objective", o)
+end
+
+------------------------------------------------------------------ hunts
+
+local function pickSpawn(minDist, maxDist)
+	local targets = aliveTargets()
+	local candidates, fallback, fallbackDist = {}, nil, math.huge
+	for _, pos in ipairs(map.MonsterSpawns) do
+		local nearest = math.huge
+		for _, t in ipairs(targets) do
+			nearest = math.min(nearest, (t.Root.Position - pos).Magnitude)
+		end
+		if nearest >= minDist and nearest <= maxDist then
+			table.insert(candidates, pos)
+		elseif nearest >= minDist and nearest < fallbackDist then
+			fallback, fallbackDist = pos, nearest
+		end
+	end
+	if #candidates > 0 then
+		return candidates[math.random(#candidates)]
+	end
+	return fallback or map.MonsterSpawns[math.random(#map.MonsterSpawns)]
+end
+
+local function scheduleNextHunt()
+	S.NextHuntAt = os.clock() + math.random(M.HuntIntervalMin, M.HuntIntervalMax)
+end
+
+-- Three whistles, then it comes.
+local function startHunt(duration, spawnPos)
+	local r = roundId
+	task.spawn(function()
+		spawnPos = spawnPos or pickSpawn(70, 160)
+		whistles(spawnPos, false)
+		runScene("Whistles")
+		task.wait(2.5)
+		if r ~= roundId or S.Ending or S.Finale or monster.State ~= "Hidden" then
+			return
+		end
+		monster:Appear(facingNearest(spawnPos))
+		monster:StartHunt(duration)
+	end)
+end
+
+local function huntLoop(r)
+	while r == roundId do
+		task.wait(1)
+		if S.HuntsEnabled and not S.Finale and not S.Ending and monster.State == "Hidden" and os.clock() >= S.NextHuntAt then
+			S.NextHuntAt = math.huge
+			startHunt(M.HuntDuration)
+		end
+	end
+end
+
+local function lakeChaseOver(barred)
+	if S.LakeChaseOver then
+		return
+	end
+	S.LakeChaseOver = true
+	map.Prompts.BarDoor.Enabled = false
+	runScene(barred and "SafeInBoathouse" or "LakeChaseOver")
+	refreshObjective()
+end
+
+local function bigChaseOver(knockedDown)
+	if S.BigChaseOver then
+		return
+	end
+	S.BigChaseOver = true
+	S.HuntsEnabled = true
+	if not knockedDown then
+		runScene("ChaseOverNoKill")
+		scheduleNextHunt()
+	end
+	refreshObjective()
+end
+
+local function onHuntEnded()
+	if S.LakeChase and not S.LakeChaseOver then
+		lakeChaseOver(false)
+	end
+	if S.BigChase and not S.BigChaseOver then
+		bigChaseOver(false)
+	elseif S.HuntsEnabled then
+		scheduleNextHunt()
+	end
+end
+
+local function onDowned()
+	S.RespawnToken += 1
+	local token, r = S.RespawnToken, roundId
+	local respawn = S.Finale and M.FinaleRespawnTime or M.RespawnTime
+	S.DownedUntil = os.clock() + respawn
+	fx("Sound", "Screech", monster:GetPosition())
+	fx("Flash", Color3.fromRGB(255, 140, 60), 0.4)
+	notify("The Twelfth is down... for now.", Color3.fromRGB(255, 170, 90))
+	for _, t in ipairs(aliveTargets()) do
+		Monetization.AwardBadge(t.Player, "KnockedDown")
+	end
+	local firstKill = not S.FirstKill
+	if firstKill and not S.Finale then
+		S.FirstKill = true
+		task.delay(3.5, function()
+			if r == roundId then
+				runScene("FirstKill")
+			end
+		end)
+	end
+	if S.LakeChase and not S.LakeChaseOver then
+		lakeChaseOver(false)
+	end
+	if S.BigChase and not S.BigChaseOver then
+		bigChaseOver(true)
+	end
+	task.delay(respawn, function()
+		if r ~= roundId or token ~= S.RespawnToken or S.Ending or monster.State ~= "Hidden" then
+			return
+		end
+		if S.Finale then
+			local spot = map.Points.FlagpoleBehind.Position
+			whistles(spot, false)
+			runScene("Whistles")
+			if not waitRound(r, 2.5) or token ~= S.RespawnToken or S.Ending or S.Victory then
+				return
+			end
+			monster:Appear(facingNearest(spot))
+			monster:StartHunt(nil)
+		elseif firstKill then
+			whistles(nil, true)
+			runScene("ItsBack")
+			if S.HuntsEnabled then
+				S.NextHuntAt = os.clock() + 25
+			end
+		elseif S.HuntsEnabled then
+			startHunt(M.HuntDuration * 0.75)
+		else
+			whistles(nil, true)
+			runScene("WhistlesFar")
+		end
+	end)
+end
+
+------------------------------------------------------------------ sighting
+
+local function endSighting()
+	if not S.Sighting then
+		return
+	end
+	S.Sighting = false
+	GameState:SetAttribute("Phase", "")
+	if monster.State == "Visible" then
+		monster:Hide()
+	end
+	local r = roundId
+	task.delay(1.2, function()
+		if r == roundId then
+			runScene("FirstSighting")
+		end
+	end)
+end
+
+local function startSighting()
+	if S.SightingDone or monster.State ~= "Hidden" then
+		return
+	end
+	S.SightingDone = true
+	S.Sighting = true
+	monster:Appear(map.Points.Sighting)
+	GameState:SetAttribute("Phase", "Sighting")
+	fx("Sound", "Sting")
+	local r = roundId
+	task.delay(14, function()
+		if r == roundId then
+			endSighting()
+		end
+	end)
+end
+
+------------------------------------------------------------------ zones
+
+local function inZone(pos, z)
+	local rel = z.CFrame:PointToObjectSpace(pos)
+	return math.abs(rel.X) <= z.Size.X / 2 and math.abs(rel.Y) <= z.Size.Y / 2 and math.abs(rel.Z) <= z.Size.Z / 2
+end
+
+-- fn(player) runs when a living player stands in the zone. For one-shot zones,
+-- returning false means "not yet" and the zone keeps watching. fn must not yield.
+local function onZone(name, fn, once)
+	zoneHandlers[name] = { Fn = fn, Once = once ~= false, Fired = false, Cooldown = {} }
+end
+
+local function zoneLoop(r)
+	while r == roundId do
+		local targets = aliveTargets()
+		for name, h in pairs(zoneHandlers) do
+			local z = map.Zones[name]
+			if z and not (h.Once and h.Fired) then
+				for _, t in ipairs(targets) do
+					if inZone(t.Root.Position, z) then
+						if h.Once then
+							if h.Fn(t.Player) ~= false then
+								h.Fired = true
+							end
+							break
+						elseif (h.Cooldown[t.Player] or 0) < os.clock() then
+							h.Cooldown[t.Player] = os.clock() + 3
+							task.spawn(h.Fn, t.Player)
+						end
+					end
+				end
+			end
+		end
+		task.wait(0.2)
+	end
+end
+
+------------------------------------------------------------------ pages & chapters
+
+local function enablePages(...)
+	for _, i in ipairs({ ... }) do
+		local p = map.Pages[i]
+		if p and not S.Pages[i] then
+			p.Prompt.Enabled = true
+		end
+	end
+end
+
+local function onPage(index, player)
+	if S.Pages[index] or S.Ending then
+		return
+	end
+	S.Pages[index] = true
+	local p = map.Pages[index]
+	p.Prompt.Enabled = false
+	hideInteractable(p.Part)
+	if index <= Config.TotalPages then
+		S.PageCount += 1
+	end
+	GameState:SetAttribute("Pages", S.PageCount)
+	local data = Story.Pages[index]
+	Remotes.PageFound:FireAllClients(index, data.Title, data.Text, S.PageCount, Config.TotalPages)
+	fx("Sound", "Pickup")
+	Monetization.AddPage(player)
+	if S.PageCount == 1 then
+		for _, pl in ipairs(Players:GetPlayers()) do
+			Monetization.AwardBadge(pl, "FirstPage")
+		end
+	end
+	if not S.Finale then
+		monster.Speed = M.BaseSpeed + M.SpeedPerPage * S.PageCount
+	end
+
+	if index == 9 then
+		S.SecretFound = true
+		notify("Secret found: the Director's letter", GOLD)
+		runScene("OfficeLetter")
+		refreshObjective()
+	elseif index == 8 then
+		startFinale()
+	elseif index == 1 then
+		startChapter(2)
+	elseif S.Chapter == 2 and S.Pages[2] and S.Pages[3] then
+		startChapter(3)
+	elseif S.Chapter == 3 and S.Pages[4] and S.Pages[5] then
+		startChapter(4)
+	elseif S.Chapter == 4 and S.Pages[6] and S.Pages[7] then
+		startChapter(6)
+	end
+end
+
+startChapter = function(n)
+	if S.Ending then
+		return
+	end
+	S.Chapter = n
+	GameState:SetAttribute("Chapter", n)
+	fx("Chapter", Story.Chapters[n])
+	reviveCounted()
+	if n == 2 then
+		setCheckpoint("Campfire")
+		enablePages(2, 3)
+	elseif n == 3 then
+		setCheckpoint("Dock")
+		enablePages(4, 5)
+	elseif n == 4 then
+		setCheckpoint("MessHall")
+		for i, pp in ipairs(map.Prompts.Fuses) do
+			pp.Enabled = map.Parts.Fuses[i].Transparency < 1
+		end
+		map.Prompts.Key.Enabled = not S.HasKey
+	elseif n == 6 then
+		setCheckpoint("Flagpole")
+		runScene("ToFlagpole")
+	end
+	refreshObjective()
+end
+
+startFinale = function()
+	if S.Finale or S.Ending then
+		return
+	end
+	S.Finale = true
+	S.HuntsEnabled = false
+	S.RespawnToken += 1
+	S.RosterHits = 0
+	S.LightsOut = true
+	GameState:SetAttribute("Phase", "Finale")
+	GameState:SetAttribute("RosterHits", 0)
+	reviveCounted()
+	monster:Hide()
+	monster.Hits = 0
+	monster.Speed = M.FinaleSpeed
+	local r = roundId
+	task.spawn(function()
+		local spot = map.Points.FlagpoleBehind.Position
+		for _, off in ipairs({ Vector3.new(80, 0, 0), Vector3.new(-80, 0, 0), Vector3.new(0, 0, 80), Vector3.new(0, 0, -80) }) do
+			whistles(spot + off, false)
+		end
+		playScene("FinaleWhistle")
+		if r ~= roundId or S.Ending then
+			return
+		end
+		monster:Appear(facingNearest(spot))
+		fx("Flash", Color3.fromRGB(255, 0, 0), 0.25)
+		fx("Shake", 1, 1.2)
+		playScene("Headcount")
+		if r ~= roundId or S.Ending then
+			return
+		end
+		refreshObjective()
+		monster:StartHunt(nil)
+		runScene("Finale")
+	end)
+end
+
+local function giveWhistle(player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		return
+	end
+	local tool = Instance.new("Tool")
+	tool.Name = "Marcy's Whistle"
+	tool.CanBeDropped = false
+	tool.ToolTip = "You can't let go of it."
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.3, 0.3, 0.8)
+	handle.Color = Color3.fromRGB(200, 200, 205)
+	handle.Material = Enum.Material.Metal
+	handle.CanCollide = false
+	handle.Parent = tool
+	tool.Parent = backpack
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum:EquipTool(tool)
+	end
+end
+
+function Director.endRound(kind)
+	if S.Ending then
+		return
+	end
+	S.Ending = kind
+	S.HuntsEnabled = false
+	S.RespawnToken += 1
+	GameState:SetAttribute("Phase", "Ending")
+	local r = roundId
+	local ending = Story.Endings[kind]
+	task.spawn(function()
+		if kind == "B" then
+			monster:Hide()
+			fx("Fade", 0, 1.5)
+			task.wait(1.8)
+			fx("Roster", S.CountedNames)
+			task.wait(1 + #S.CountedNames * 0.8)
+			playScene("EndingB")
+			fx("Ending", ending.Title, ending.Subtitle, kind)
+			task.wait(8)
+		else
+			local survivors = aliveTargets()
+			S.LightsOut = false
+			dawn()
+			for _, t in ipairs(survivors) do
+				Monetization.AddEscape(t.Player)
+				Monetization.AwardBadge(t.Player, "Escaped")
+			end
+			playScene("EndingA")
+			if kind == "C" and #survivors > 0 then
+				local chosen = survivors[math.random(#survivors)].Player
+				giveWhistle(chosen)
+				task.wait(say("SOUND", string.format(Story.WhistleLine, chosen.DisplayName), 4.5))
+				playScene("EndingC")
+				for _, t in ipairs(survivors) do
+					Monetization.AwardBadge(t.Player, "SecretEnding")
+				end
+			end
+			fx("Ending", ending.Title, ending.Subtitle, kind)
+			task.wait(9)
+			if kind == "A" then
+				whistles(nil, true) -- post-credits: a single faint whistle far away
+				task.wait(3)
+			end
+		end
+		if r ~= roundId then
+			return
+		end
+		fx("Fade", 0, 1.5)
+		fx("ScreenText", "The next night begins...", 4, "date")
+		task.wait(Config.IntermissionTime)
+		if r == roundId then
+			Director.startRound()
+		end
+	end)
+end
+
+local function victory()
+	S.Victory = true
+	S.RespawnToken += 1
+	local r = roundId
+	local roster = map.Parts.Roster
+	local fire = map.Parts.RosterFire
+	fire.Enabled = true
+	fire.Size = 10
+	fx("Sound", "Screech", monster:GetPosition())
+	fx("Shake", 1, 2.5)
+	fx("Flash", Color3.fromRGB(255, 150, 60), 0.6)
+	runScene("Victory")
+	task.delay(2.5, function()
+		roster.Color = Color3.fromRGB(25, 20, 18)
+		hideInteractable(roster)
+		roster.Transparency = 0
+		task.delay(2, function()
+			roster.Transparency = 1
+			fire.Enabled = false
+		end)
+	end)
+	local function finish()
+		task.wait(1)
+		if r == roundId then
+			Director.endRound(S.SecretFound and "C" or "A")
+		end
+	end
+	if monster:IsVisible() then
+		monster:Die(function()
+			task.spawn(finish)
+		end)
+	else
+		task.spawn(finish)
+	end
+end
+
+local function onRosterHit(_player)
+	if not S.Finale or S.Ending or S.Victory then
+		return
+	end
+	local exposed = monster:IsStunned() or monster.State == "Downed" or (monster.State == "Hidden" and os.clock() < S.DownedUntil)
+	if not exposed then
+		if os.clock() - S.LastResistLine > 6 then
+			S.LastResistLine = os.clock()
+			runScene("RosterResist")
+		end
+		return
+	end
+	S.RosterHits += 1
+	GameState:SetAttribute("RosterHits", S.RosterHits)
+	map.Parts.RosterFire.Enabled = true
+	map.Parts.RosterFire.Size = 2 + S.RosterHits * 2
+	refreshObjective()
+	if S.RosterHits >= Config.RosterHitsNeeded then
+		victory()
+	else
+		runScene("RosterBurning")
+	end
+end
+
+local function onMonsterHit(_player)
+	if S.Sighting then
+		endSighting()
+		return
+	end
+	if monster:FlareHit() ~= "ignored" then
+		fx("Sound", "Screech", monster:GetPosition(), 0.6)
+	end
+end
+
+------------------------------------------------------------------ round wiring
+
+local function onKit(_player)
+	if S.KitOpened then
+		return
+	end
+	S.KitOpened = true
+	map.Prompts.Kit.Enabled = false
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			Flares.giveGun(p, true)
+		end
+	end
+	notify(string.format("Picked up: Flare Gun (%d flares)", Config.StartingFlares), Color3.fromRGB(255, 150, 90))
+	refreshObjective()
+	local r = roundId
+	task.spawn(function()
+		playScene("KitOpened")
+		if not waitRound(r, 0.8) then
+			return
+		end
+		map.ShackLamp.Dead = false -- far up the road, a single cabin light flickers on
+		if not waitRound(r, 3) then
+			return
+		end
+		whistles(map.Points.Shack, true)
+		runScene("PrologueWhistle")
+		if not waitRound(r, 1.4) then
+			return
+		end
+		map.ShackLamp.Dead = true
+		if S.Chapter < 1 then
+			S.Chapter = 1
+			GameState:SetAttribute("Chapter", 1)
+		end
+		refreshObjective()
+	end)
+end
+
+local function wireRound()
+	local P = map.Prompts
+
+	P.Kit.Triggered:Connect(onKit)
+	for i, page in pairs(map.Pages) do
+		page.Prompt.Triggered:Connect(function(player)
+			onPage(i, player)
+		end)
+	end
+	Flares.setupBoxes(map.FlareBoxes)
+
+	-- Chapter 1: the gate
+	onZone("RoadLoop", function(player)
+		local char = player.Character
+		if not char then
+			return
+		end
+		Remotes.Effect:FireClient(player, "Blink")
+		char:PivotTo(map.Checkpoints.Gate * CFrame.new(0, 3, 0))
+		sceneFor(player, S.RadioFound and "RoadLoopRadio" or "RoadLoop")
+	end, false)
+
+	onZone("Gate", function(player)
+		if not S.KitOpened then
+			onKit(player)
+		end
+		S.AtGate = true
+		if S.Chapter < 1 then
+			S.Chapter = 1
+			GameState:SetAttribute("Chapter", 1)
+		end
+		fx("Chapter", Story.Chapters[1])
+		setCheckpoint("Gate")
+		runScene("GateArrive")
+		refreshObjective()
+	end)
+
+	P.Radio.Triggered:Connect(function()
+		if S.RadioFound or S.Ending then
+			return
+		end
+		S.RadioFound = true
+		S.AtGate = true
+		P.Radio.Enabled = false
+		hideInteractable(map.Parts.Radio)
+		fx("Sound", "Radio")
+		enablePages(1)
+		refreshObjective()
+		runScene("GateRadio")
+	end)
+
+	-- Chapter 2: the cabins
+	onZone("Campfire", function()
+		if S.Chapter < 2 then
+			return false
+		end
+		runScene("CabinsArrive")
+	end)
+
+	onZone("CabinC", function()
+		if S.Chapter < 2 then
+			return false
+		end
+		local r = roundId
+		task.spawn(function()
+			sceneToken += 1
+			fx("Sound", "Knock", map.Points.Tape, 0.4)
+			local count = ""
+			for _, w in ipairs({ "One...", "two...", "three...", "four...", "five...", "six...", "seven...", "eight...", "nine...", "ten...", "eleven..." }) do
+				count = count == "" and w or (count .. " " .. w)
+				say("TAPE", count, 1.3)
+				if not waitRound(r, 0.85) then
+					return
+				end
+			end
+			if not waitRound(r, 0.7) then
+				return
+			end
+			say("WRONG", "...twelve.", 3)
+			fx("Sound", "Sting")
+			if not waitRound(r, 0.4) then
+				return
+			end
+			for _, l in ipairs(map.Lamps) do
+				if l.Group == "CabinC" then
+					l.Dead = true
+				end
+			end
+			fx("Shake", 0.5, 0.6)
+			-- the first sighting waits until everyone has stepped back outside (or 20 s)
+			local started = os.clock()
+			while r == roundId and os.clock() - started < 20 do
+				local inside = false
+				for _, t in ipairs(aliveTargets()) do
+					if inZone(t.Root.Position, map.Zones.CabinC) then
+						inside = true
+					end
+				end
+				if not inside then
+					break
+				end
+				task.wait(0.3)
+			end
+			if waitRound(r, 1) and not S.Ending then
+				startSighting()
+			end
+		end)
+	end)
+
+	-- Chapter 3: the lake
+	onZone("Shore", function()
+		if S.Chapter < 3 then
+			return false
+		end
+		runScene("FlareBoxes")
+	end)
+
+	onZone("Canoes", function()
+		if S.Chapter < 3 then
+			return false
+		end
+		task.spawn(function()
+			for _ = 1, 3 do
+				fx("Sound", "Knock", map.Points.Canoe)
+				task.wait(0.7)
+			end
+		end)
+		runScene("CanoeKnock")
+	end)
+
+	P.CanoeFlip.Triggered:Connect(function()
+		if S.CanoeFlipped then
+			return
+		end
+		S.CanoeFlipped = true
+		P.CanoeFlip.Enabled = false
+		local hull = map.Parts.Canoe
+		hull.CFrame = hull.CFrame * CFrame.new(1.6, 0.2, 0) * CFrame.Angles(0, 0, math.rad(160))
+		hideInteractable(map.Parts.CanoeKeel)
+		for _, fp in ipairs(map.Parts.Footprints) do
+			fp.Transparency = 0.2
+		end
+		runScene("CanoeFlip")
+	end)
+
+	onZone("Dock", function()
+		if S.Chapter < 3 or monster.State ~= "Hidden" then
+			return false
+		end
+		S.LakeChase = true
+		local r = roundId
+		task.spawn(function()
+			local rise = map.Points.LakeRise
+			whistles(rise.Position, false)
+			runScene("LakeWhistle")
+			if not waitRound(r, 1.4) then
+				return
+			end
+			monster:Rise(rise, 2.2)
+			fx("Sound", "Splash", rise.Position)
+			fx("Shake", 0.6, 1.2)
+			task.spawn(function()
+				for _, l in ipairs(map.DockLamps) do
+					if r ~= roundId then
+						return
+					end
+					l.Dead = true
+					task.wait(0.55)
+				end
+			end)
+			runScene("LakeChase")
+			refreshObjective()
+			P.BarDoor.Enabled = true
+			if waitRound(r, 2.4) and monster.State == "Visible" then
+				monster:StartHunt(M.HuntDuration)
+			end
+		end)
+	end)
+
+	P.BarDoor.Triggered:Connect(function()
+		if S.DoorBarred or not S.LakeChase then
+			return
+		end
+		S.DoorBarred = true
+		P.BarDoor.Enabled = false
+		local door = map.Parts.BoathouseDoor
+		door.Transparency = 0
+		door.CanCollide = true
+		door.CanQuery = true
+		fx("Sound", "Door", door.Position)
+		if monster.State == "Hunting" or monster.State == "Visible" then
+			monster:EndHunt(map.Points.LakeSink - Vector3.new(0, 14, 0)) -- walks back into the fog
+		end
+		lakeChaseOver(true)
+		local r = roundId
+		task.delay(18, function()
+			if r == roundId then
+				door.Transparency = 1
+				door.CanCollide = false
+				door.CanQuery = false
+				notify("The boathouse door creaks open on its own...")
+			end
+		end)
+	end)
+
+	-- Chapter 4: the mess hall
+	for _, pp in ipairs(P.Fuses) do
+		pp.Enabled = false
+	end
+	P.Key.Enabled = false
+
+	onZone("MessHall", function()
+		if S.Chapter < 4 then
+			return false
+		end
+		runScene("MessHall")
+	end)
+
+	for i, pp in ipairs(P.Fuses) do
+		pp.Triggered:Connect(function()
+			if S.Ending or not pp.Enabled then
+				return
+			end
+			pp.Enabled = false
+			hideInteractable(map.Parts.Fuses[i])
+			S.Fuses += 1
+			fx("Sound", "Pickup")
+			notify(string.format("Fuse found (%d/%d)", S.Fuses, Config.FusesNeeded), Color3.fromRGB(255, 220, 110))
+			refreshObjective()
+		end)
+	end
+
+	P.Generator.Triggered:Connect(function(player)
+		if S.GeneratorOn or S.Ending then
+			return
+		end
+		if S.Chapter < 4 then
+			Remotes.Notify:FireClient(player, "The generator is dead. There's nothing to plug it into... yet.")
+			return
+		end
+		if S.Fuses < Config.FusesNeeded then
+			Remotes.Notify:FireClient(player, string.format("The generator needs %d fuses (%d/%d)", Config.FusesNeeded, S.Fuses, Config.FusesNeeded))
+			return
+		end
+		S.GeneratorOn = true
+		P.Generator.Enabled = false
+		fx("Sound", "Generator", map.Points.Generator)
+		enablePages(6, 7)
+		refreshObjective()
+		local r = roundId
+		task.spawn(function()
+			if not waitRound(r, 1.5) then
+				return
+			end
+			playScene("PA")
+			if r ~= roundId or S.Ending then
+				return
+			end
+			S.RespawnToken += 1
+			monster:Hide()
+			local kitchen = map.Points.Kitchen
+			whistles(kitchen.Position, false)
+			runScene("KitchenWhistle")
+			if not waitRound(r, 2) or S.Ending then
+				return
+			end
+			monster:Appear(kitchen)
+			fx("Sound", "Door", kitchen.Position)
+			fx("Shake", 0.8, 0.8)
+			S.BigChase = true
+			refreshObjective()
+			runScene("BigChase")
+			monster:StartHunt(75)
+		end)
+	end)
+
+	P.Key.Triggered:Connect(function()
+		if S.HasKey then
+			return
+		end
+		S.HasKey = true
+		P.Key.Enabled = false
+		hideInteractable(map.Parts.Key)
+		fx("Sound", "Pickup")
+		notify("Found: a rusty key labeled DIRECTOR", GOLD)
+		runScene("GotKey")
+		refreshObjective()
+	end)
+
+	-- Chapter 5 (secret): the director's office
+	P.OfficeDoor.Triggered:Connect(function(player)
+		if S.OfficeOpen then
+			return
+		end
+		local door = map.Parts.OfficeDoor
+		fx("Sound", "Door", door.Position)
+		if not S.HasKey then
+			Remotes.Notify:FireClient(player, "Locked. The keyhole is stamped DIRECTOR.")
+			return
+		end
+		S.OfficeOpen = true
+		P.OfficeDoor.Enabled = false
+		local hinge = door.CFrame * CFrame.new(-door.Size.X / 2, 0, 0)
+		door.CFrame = hinge * CFrame.Angles(0, math.rad(100), 0) * CFrame.new(door.Size.X / 2, 0, 0)
+		fx("Chapter", Story.Chapters[5])
+		enablePages(9)
+	end)
+
+	-- Chapter 6: the flagpole
+	onZone("Flagpole", function()
+		if S.Chapter < 6 then
+			return false
+		end
+		S.AtFlagpole = true
+		tweenAtmosphere({ Density = 0.22, Haze = 1 }, 6) -- the fog pulls back; the moon is out
+		runScene("Roster")
+		enablePages(8)
+		refreshObjective()
+	end)
+end
+
+local function prologue(r)
+	refreshObjective()
+	if not waitRound(r, 1.2) then
+		return
+	end
+	fx("ScreenText", "November 12.   11:47 PM.", 4, "date")
+	if not waitRound(r, 4.8) then
+		return
+	end
+	fx("Chapter", Story.Chapters[0])
+	if not waitRound(r, 2) then
+		return
+	end
+	runScene("Prologue")
+end
+
+function Director.startRound()
+	roundId += 1
+	local r = roundId
+	sceneToken += 1
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			p.Character:Destroy()
+		end
+	end
+	if monster then
+		monster:Destroy()
+	end
+	S = newState()
+	zoneHandlers = {}
+	map = MapBuilder.build()
+	MapBuilder.setupLighting()
+	monster = Monster.new(map.Folder, aliveTargets)
+	monster.OnCatch = countPlayer
+	monster.OnDowned = onDowned
+	monster.OnHuntEnded = onHuntEnded
+	wireRound()
+	setCheckpoint("Car")
+	GameState:SetAttribute("Pages", 0)
+	GameState:SetAttribute("Phase", "")
+	GameState:SetAttribute("RosterHits", 0)
+	GameState:SetAttribute("Chapter", 0)
+	Monetization.ResetRoundStats()
+	for _, p in ipairs(Players:GetPlayers()) do
+		p:SetAttribute("Flares", Flares.starting(p))
+		task.spawn(spawnPlayer, p)
+	end
+	fx("Fade", 1, 2.5)
+	task.spawn(prologue, r)
+	task.spawn(lampLoop, r)
+	task.spawn(zoneLoop, r)
+	task.spawn(huntLoop, r)
+end
+
+------------------------------------------------------------------ boot
+
+local function onPlayerAdded(player)
+	player:SetAttribute("Flares", Flares.starting(player))
+	player:SetAttribute("Counted", false)
+	player.CameraMaxZoomDistance = 14
+	player.DevEnableMouseLock = false -- Shift is the run key
+	player.CharacterAdded:Connect(function(char)
+		onCharacter(player, char)
+	end)
+	task.spawn(Monetization.SetupPlayer, player)
+	if map then
+		task.spawn(spawnPlayer, player)
+	end
+end
+
+function Director.start(remotes)
+	Remotes = remotes
+
+	Monetization.ProductHandlers.SecondChance = Director.revive
+	Monetization.ProductHandlers.FlarePack = function(player)
+		Flares.give(player, Config.FlarePackAmount)
+		Remotes.Notify:FireClient(player, string.format("+%d flares", Config.FlarePackAmount), GOLD)
+		return true
+	end
+	Monetization.OnPassGranted = function(player, name)
+		if name == "SurvivorKit" then
+			Flares.give(player, Config.SurvivorKitBonusFlares)
+		end
+		local head = player.Character and player.Character:FindFirstChild("Head")
+		local beam = head and head:FindFirstChild("Flashlight")
+		if beam then
+			styleFlashlight(player, beam)
+		end
+	end
+	Monetization.init()
+
+	Flares.init(Remotes, {
+		GetMonster = function()
+			return monster
+		end,
+		GetRoster = function()
+			return map and map.Parts.Roster
+		end,
+		IsFinale = function()
+			return S.Finale
+		end,
+		CanFire = function(player)
+			return not S.Counted[player] and not S.Ending
+		end,
+		OnMonsterHit = onMonsterHit,
+		OnRosterHit = onRosterHit,
+	})
+
+	Remotes.Flashlight.OnServerEvent:Connect(function(player, on)
+		local head = player.Character and player.Character:FindFirstChild("Head")
+		local beam = head and head:FindFirstChild("Flashlight")
+		if beam then
+			beam.Enabled = on == true
+		end
+	end)
+	Remotes.LookedAway.OnServerEvent:Connect(function()
+		if S.Sighting then
+			endSighting()
+		end
+	end)
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	Players.PlayerRemoving:Connect(function(player)
+		S.Counted[player] = nil
+		task.defer(checkWipe)
+	end)
+	for _, p in ipairs(Players:GetPlayers()) do
+		onPlayerAdded(p)
+	end
+	Director.startRound()
+end
+
+return Director
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX00000006">
+<Properties>
+<string name="Name">Flares</string>
+<ProtectedString name="Source"><![CDATA[-- Flare gun: ammo, firing, server-side hit detection and the red flare boxes.
+-- Clients draw the flare itself (Effect "Flare"); the server decides what it hit.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
+local Flares = {}
+Flares.ToolName = "Flare Gun"
+
+local remotes
+local ctx -- callbacks supplied by the Director
+local cooldowns = {}
+
+function Flares.starting(player)
+	local n = Config.StartingFlares
+	if player:GetAttribute("SurvivorKit") then
+		n += Config.SurvivorKitBonusFlares
+	end
+	return n
+end
+
+function Flares.give(player, amount)
+	player:SetAttribute("Flares", (player:GetAttribute("Flares") or 0) + amount)
+end
+
+function Flares.giveGun(player, equip)
+	local char = player.Character
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		return
+	end
+	if backpack:FindFirstChild(Flares.ToolName) or (char and char:FindFirstChild(Flares.ToolName)) then
+		return
+	end
+	local tool = Instance.new("Tool")
+	tool.Name = Flares.ToolName
+	tool.CanBeDropped = false
+	tool.RequiresHandle = true
+	tool.ToolTip = "Click / tap to fire a flare"
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.45, 0.9, 1.6)
+	handle.Color = Color3.fromRGB(225, 75, 30)
+	handle.Material = Enum.Material.SmoothPlastic
+	handle.CanCollide = false
+	handle.Massless = true
+	handle.Parent = tool
+	tool.Parent = backpack
+	if equip and char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:EquipTool(tool)
+		end
+	end
+end
+
+local function onFire(player, target)
+	if typeof(target) ~= "Vector3" or target ~= target then
+		return
+	end
+	if not ctx.CanFire(player) then
+		return
+	end
+	local char = player.Character
+	local tool = char and char:FindFirstChild(Flares.ToolName)
+	local head = char and char:FindFirstChild("Head")
+	if not tool or not head then
+		return
+	end
+	local now = os.clock()
+	if (cooldowns[player] or 0) > now then
+		return
+	end
+	cooldowns[player] = now + Config.FlareCooldown * 0.8 -- small allowance for latency
+	local ammo = player:GetAttribute("Flares") or 0
+	if ammo <= 0 then
+		remotes.Notify:FireClient(player, "Out of flares! Find a red flare box.")
+		return
+	end
+	player:SetAttribute("Flares", ammo - 1)
+
+	local handle = tool:FindFirstChild("Handle")
+	local origin = handle and handle.Position or head.Position
+	if (origin - head.Position).Magnitude > 8 then
+		origin = head.Position
+	end
+	local dir = target - origin
+	if dir.Magnitude < 0.5 then
+		return
+	end
+	local unit = dir.Unit
+
+	local ignore = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(ignore, p.Character)
+		end
+	end
+	local monster = ctx.GetMonster()
+	if monster then
+		table.insert(ignore, monster.Model)
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore
+	local result = workspace:Raycast(origin, unit * Config.FlareRange, params)
+
+	local hitDist = result and result.Distance or Config.FlareRange
+	local kind = result and "ground" or "air"
+	local along = monster and monster:RayHit(origin, unit, hitDist + 1, Config.FlareHitRadius)
+	if along then
+		kind, hitDist = "monster", along
+	elseif result and result.Instance == ctx.GetRoster() then
+		kind = "roster"
+	end
+	remotes.Effect:FireAllClients("Flare", origin, origin + unit * hitDist, kind)
+	task.delay(hitDist / Config.FlareSpeed, function()
+		if kind == "monster" then
+			ctx.OnMonsterHit(player)
+		elseif kind == "roster" then
+			ctx.OnRosterHit(player)
+		end
+	end)
+end
+
+function Flares.setupBoxes(boxes)
+	for _, box in ipairs(boxes) do
+		local closedLid = box.Lid.CFrame
+		box.Prompt.Triggered:Connect(function(player)
+			if box.Empty or not ctx.CanFire(player) then
+				return
+			end
+			box.Empty = true
+			box.Prompt.Enabled = false
+			box.Light.Enabled = false
+			box.Lid.CFrame = closedLid * CFrame.new(0, 0.7, 1) * CFrame.Angles(math.rad(-75), 0, 0)
+			Flares.give(player, Config.FlareBoxAmount)
+			remotes.Notify:FireClient(player, string.format("+%d flares", Config.FlareBoxAmount), Color3.fromRGB(255, 150, 90))
+			remotes.Effect:FireClient(player, "Sound", "Pickup")
+			task.delay(ctx.IsFinale() and Config.FlareBoxRespawnFinale or Config.FlareBoxRespawn, function()
+				if not box.Body.Parent then
+					return
+				end
+				box.Empty = false
+				box.Prompt.Enabled = true
+				box.Light.Enabled = true
+				box.Lid.CFrame = closedLid
+			end)
+		end)
+	end
+end
+
+function Flares.init(remoteFolder, context)
+	remotes = remoteFolder
+	ctx = context
+	remotes.FireFlare.OnServerEvent:Connect(onFire)
+	Players.PlayerRemoving:Connect(function(player)
+		cooldowns[player] = nil
+	end)
+end
+
+return Flares
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="RBX00000007">
+<Properties>
+<string name="Name">Main</string>
+<ProtectedString name="Source"><![CDATA[-- HEADCOUNT server entry point: creates the remotes, then hands over to the Director.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+Players.CharacterAutoLoads = false -- the Director spawns players at story checkpoints
+
+local remotes = Instance.new("Folder")
+remotes.Name = "Remotes"
+for _, name in ipairs({ "Dialogue", "Effect", "PageFound", "Notify", "FireFlare", "Flashlight", "LookedAway" }) do
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = remotes
+end
+remotes.Parent = ReplicatedStorage
+
+require(script.Parent.Director).start(remotes)
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX00000008">
+<Properties>
+<string name="Name">MapBuilder</string>
+<ProtectedString name="Source"><![CDATA[-- Builds all of Camp Hollow Pines from code: terrain, forest, lake, buildings, props.
+-- Nothing has to be placed by hand in Studio. Swap any piece for a Toolbox model later.
+-- Returns a table of references the Director uses to run the story.
+--
+-- Layout (top view, +Z is north):
+--   car (0,-40) -> road -> gate (z=150) -> cabins around campfire (0,268)
+--   lake + dock + boathouse to the east (x 130..300)
+--   mess hall to the west (-150,330), director's office on the hill (-150,490)
+--   flagpole at the centre-north (0,450)
+
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Story = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Story"))
+
+local MapBuilder = {}
+
+local WOOD = Color3.fromRGB(86, 64, 46)
+local DARK_WOOD = Color3.fromRGB(54, 40, 30)
+local TRUNK = Color3.fromRGB(58, 44, 34)
+local ROOF = Color3.fromRGB(44, 40, 38)
+local STONE = Color3.fromRGB(92, 92, 95)
+local METAL = Color3.fromRGB(58, 60, 64)
+local PAPER = Color3.fromRGB(232, 224, 200)
+local GLASS = Color3.fromRGB(22, 28, 34)
+local LAMP_ON = Color3.fromRGB(255, 196, 120)
+local RED_BOX = Color3.fromRGB(185, 28, 24)
+local INK_RED = "#a01515"
+
+local UP = CFrame.Angles(0, 0, math.rad(90)) -- stands a cylinder's X axis upright
+local FLAT = CFrame.Angles(math.rad(-90), 0, 0) -- lays a sheet of paper flat
+local DEG = math.rad
+
+local root -- the "Camp" folder
+local current -- folder new parts go into
+local map
+
+------------------------------------------------------------------ helpers
+
+local function group(name)
+	local f = Instance.new("Folder")
+	f.Name = name
+	f.Parent = root
+	current = f
+	return f
+end
+
+local function P(size, cf, color, material, props)
+	local p = Instance.new("Part")
+	if props and props.Shape then
+		p.Shape = props.Shape
+	end
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color or WOOD
+	p.Material = material or Enum.Material.Wood
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if props then
+		for k, v in pairs(props) do
+			if k ~= "Shape" then
+				p[k] = v
+			end
+		end
+	end
+	p.Parent = current
+	return p
+end
+
+local function cyl(length, diameter, cf, color, material, props)
+	props = props or {}
+	props.Shape = Enum.PartType.Cylinder
+	return P(Vector3.new(length, diameter, diameter), cf, color, material, props)
+end
+
+local function beam(a, b, thick, color, material)
+	return P(Vector3.new(thick, thick, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), color, material)
+end
+
+local function surfaceText(part, face, text, opts)
+	opts = opts or {}
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = opts.PPS or 50
+	gui.LightInfluence = opts.LightInfluence or 0.35
+	gui.MaxDistance = 150
+	gui.Parent = part
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = opts.Font or Enum.Font.SpecialElite
+	label.TextColor3 = opts.Color or Color3.fromRGB(235, 225, 205)
+	label.RichText = true
+	label.TextScaled = true
+	label.TextWrapped = true
+	label.TextXAlignment = opts.XAlign or Enum.TextXAlignment.Center
+	label.TextYAlignment = opts.YAlign or Enum.TextYAlignment.Center
+	label.Text = text
+	label.Parent = gui
+	local pad = Instance.new("UIPadding")
+	local px = UDim.new(0, opts.Padding or 4)
+	pad.PaddingLeft, pad.PaddingRight, pad.PaddingTop, pad.PaddingBottom = px, px, px, px
+	pad.Parent = label
+	return gui, label
+end
+
+local function prompt(part, action, object, hold, dist)
+	local pp = Instance.new("ProximityPrompt")
+	pp.ActionText = action
+	pp.ObjectText = object or ""
+	pp.HoldDuration = hold or 0
+	pp.MaxActivationDistance = dist or 9
+	pp.RequiresLineOfSight = false
+	pp.Parent = part
+	return pp
+end
+
+local function light(class, parent, color, range, brightness, shadows)
+	local l = Instance.new(class)
+	l.Color = color
+	l.Range = range
+	l.Brightness = brightness
+	l.Shadows = shadows == true
+	l.Parent = parent
+	return l
+end
+
+local function addLamp(bulb, pointLight, groupName, dead)
+	local rec = {
+		Bulb = bulb,
+		Light = pointLight,
+		Group = groupName,
+		OnColor = bulb.Color,
+		OnMaterial = bulb.Material,
+		On = true,
+		Dead = dead == true,
+	}
+	table.insert(map.Lamps, rec)
+	return rec
+end
+
+local function lampPost(x, y, z, groupName)
+	P(Vector3.new(0.5, 10, 0.5), CFrame.new(x, y + 5, z), METAL, Enum.Material.Metal)
+	P(Vector3.new(0.3, 0.3, 1.8), CFrame.new(x, y + 9.8, z - 0.8), METAL, Enum.Material.Metal)
+	local bulb = P(Vector3.new(0.9, 0.9, 0.9), CFrame.new(x, y + 9.3, z - 1.6), LAMP_ON, Enum.Material.Neon, { CanCollide = false })
+	return addLamp(bulb, light("PointLight", bulb, LAMP_ON, 26, 1.5, true), groupName)
+end
+
+local function ceilingLamp(cf, groupName, range)
+	P(Vector3.new(0.15, 1.2, 0.15), cf * CFrame.new(0, 0.9, 0), METAL, Enum.Material.Metal, { CanCollide = false })
+	local bulb = P(Vector3.new(0.7, 0.7, 0.7), cf, LAMP_ON, Enum.Material.Neon, { CanCollide = false, Shape = Enum.PartType.Ball })
+	return addLamp(bulb, light("PointLight", bulb, LAMP_ON, range or 20, 1.3, true), groupName)
+end
+
+local function page(index, cf, color)
+	local p = P(Vector3.new(1.1, 1.4, 0.05), cf, color or PAPER, Enum.Material.SmoothPlastic, { CanCollide = false })
+	p.Name = "Page" .. index
+	light("PointLight", p, Color3.fromRGB(255, 236, 190), 6, 0.7)
+	local pp = prompt(p, "Read", index == 9 and "Typed letter" or "Journal page", 0.3, 8)
+	pp.Enabled = false
+	map.Pages[index] = { Part = p, Prompt = pp }
+	return p
+end
+
+local function flareBox(cf)
+	cf = cf * CFrame.new(0, 0.8, 0)
+	local body = P(Vector3.new(2.6, 1.6, 1.6), cf, RED_BOX, Enum.Material.Metal)
+	body.Name = "FlareBox"
+	local lid = P(Vector3.new(2.7, 0.3, 1.7), cf * CFrame.new(0, 0.95, 0), Color3.fromRGB(140, 18, 16), Enum.Material.Metal)
+	surfaceText(body, Enum.NormalId.Front, "FLARES", { Color = Color3.fromRGB(255, 235, 220), Font = Enum.Font.GothamBold, LightInfluence = 0 })
+	local glow = light("PointLight", body, Color3.fromRGB(255, 60, 40), 8, 1)
+	local pp = prompt(body, "Grab flares", "Flare box", 0.4, 9)
+	table.insert(map.FlareBoxes, { Body = body, Lid = lid, Prompt = pp, Light = glow })
+end
+
+local function zone(name, cf, size)
+	map.Zones[name] = { CFrame = cf, Size = size }
+end
+
+-- A wall along its local X axis, base centred on cf, with an optional door gap.
+local function wall(cf, length, height, color, material, door)
+	if not door then
+		return P(Vector3.new(length, height, 0.8), cf * CFrame.new(0, height / 2, 0), color, material)
+	end
+	local off = door.Offset or 0
+	local gapL, gapR = off - door.Width / 2, off + door.Width / 2
+	local lw = gapL + length / 2
+	if lw > 0.05 then
+		P(Vector3.new(lw, height, 0.8), cf * CFrame.new(-length / 2 + lw / 2, height / 2, 0), color, material)
+	end
+	local rw = length / 2 - gapR
+	if rw > 0.05 then
+		P(Vector3.new(rw, height, 0.8), cf * CFrame.new(gapR + rw / 2, height / 2, 0), color, material)
+	end
+	local top = height - door.Height
+	if top > 0.05 then
+		P(Vector3.new(door.Width, top, 0.8), cf * CFrame.new(off, door.Height + top / 2, 0), color, material)
+	end
+end
+
+-- A wooden building. cf = centre of the footprint at ground level, LookVector = front.
+-- Width runs along local X, depth along local Z. Floor top is 0.6 above cf.
+local function building(cf, w, d, h, opts)
+	opts = opts or {}
+	local color = opts.Color or WOOD
+	local mat = opts.Material or Enum.Material.WoodPlanks
+	P(Vector3.new(w, 0.6, d), cf * CFrame.new(0, 0.3, 0), DARK_WOOD, Enum.Material.WoodPlanks)
+	wall(cf * CFrame.new(0, 0, -d / 2 + 0.4), w, h, color, mat, opts.FrontDoor)
+	wall(cf * CFrame.new(0, 0, d / 2 - 0.4), w, h, color, mat, opts.BackDoor)
+	wall(cf * CFrame.new(-w / 2 + 0.4, 0, 0) * CFrame.Angles(0, DEG(90), 0), d, h, color, mat, opts.LeftDoor)
+	wall(cf * CFrame.new(w / 2 - 0.4, 0, 0) * CFrame.Angles(0, DEG(90), 0), d, h, color, mat, opts.RightDoor)
+	P(Vector3.new(w, 0.4, d), cf * CFrame.new(0, h + 0.2, 0), DARK_WOOD, Enum.Material.WoodPlanks)
+	local pitch = DEG(opts.Pitch or 24)
+	local half = d / 2 + 1
+	local slope = half / math.cos(pitch)
+	local rise = half * math.tan(pitch)
+	local roofColor = opts.RoofColor or ROOF
+	P(Vector3.new(w + 2, 0.6, slope), cf * CFrame.new(0, h + rise / 2, -half / 2) * CFrame.Angles(-pitch, 0, 0), roofColor, Enum.Material.Slate)
+	P(Vector3.new(w + 2, 0.6, slope), cf * CFrame.new(0, h + rise / 2, half / 2) * CFrame.Angles(pitch, 0, 0), roofColor, Enum.Material.Slate)
+	if opts.Windows then
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, z in ipairs(opts.Windows) do
+				P(Vector3.new(0.2, 2.4, 3), cf * CFrame.new(sx * (w / 2 + 0.05), h * 0.55, z), GLASS, Enum.Material.Glass, { Transparency = 0.15 })
+			end
+		end
+	end
+end
+
+local function bunk(cf)
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			P(Vector3.new(0.4, 6, 0.4), cf * CFrame.new(sx * 3.4, 3, sz * 1.6), DARK_WOOD)
+		end
+	end
+	for _, y in ipairs({ 1.3, 4.3 }) do
+		P(Vector3.new(7.2, 0.3, 3.6), cf * CFrame.new(0, y, 0), DARK_WOOD)
+		P(Vector3.new(6.8, 0.5, 3.2), cf * CFrame.new(0, y + 0.4, 0), Color3.fromRGB(105, 115, 96), Enum.Material.Fabric)
+		P(Vector3.new(1.4, 0.4, 2.4), cf * CFrame.new(2.6, y + 0.85, 0), Color3.fromRGB(215, 210, 200), Enum.Material.Fabric)
+	end
+end
+
+local function distToSegment(px, pz, ax, az, bx, bz)
+	local abx, abz = bx - ax, bz - az
+	local t = math.clamp(((px - ax) * abx + (pz - az) * abz) / (abx * abx + abz * abz), 0, 1)
+	local cx, cz = ax + abx * t, az + abz * t
+	return math.sqrt((px - cx) ^ 2 + (pz - cz) ^ 2)
+end
+
+------------------------------------------------------------------ layout data
+
+local PATHS = { -- ax, az, bx, bz, clear radius, mud width
+	{ 0, -135, 0, 165, 13, 9 }, -- road
+	{ 0, 150, 0, 268, 12, 6 }, -- gate -> campfire
+	{ 0, 268, 0, 450, 10, 6 }, -- campfire -> flagpole
+	{ 0, 268, 122, 300, 11, 6 }, -- campfire -> dock
+	{ 0, 268, -118, 330, 11, 6 }, -- campfire -> mess hall
+	{ -150, 350, -150, 480, 10, 6 }, -- mess hall -> office hill
+}
+local CLEAR_CIRCLES = { { 0, -40, 22 }, { -26, 95, 14 }, { 0, 268, 86 }, { 0, 450, 44 }, { -150, 490, 30 } }
+local CLEAR_RECTS = { { 116, 312, 178, 422 }, { -208, -96, 286, 388 } } -- xmin, xmax, zmin, zmax
+
+local function treeAllowed(x, z)
+	for _, c in ipairs(CLEAR_CIRCLES) do
+		if (x - c[1]) ^ 2 + (z - c[2]) ^ 2 < c[3] ^ 2 then
+			return false
+		end
+	end
+	for _, r in ipairs(CLEAR_RECTS) do
+		if x > r[1] and x < r[2] and z > r[3] and z < r[4] then
+			return false
+		end
+	end
+	for _, s in ipairs(PATHS) do
+		if distToSegment(x, z, s[1], s[2], s[3], s[4]) < s[5] then
+			return false
+		end
+	end
+	return true
+end
+
+------------------------------------------------------------------ sections
+
+local function buildTerrain()
+	local T = workspace.Terrain
+	T:Clear()
+	T:FillBlock(CFrame.new(0, -20, 260), Vector3.new(820, 40, 820), Enum.Material.Grass)
+	for _, s in ipairs(PATHS) do
+		local a, b = Vector3.new(s[1], -2, s[2]), Vector3.new(s[3], -2, s[4])
+		T:FillBlock(CFrame.lookAt((a + b) / 2, b), Vector3.new(s[6], 4, (b - a).Magnitude), Enum.Material.Mud)
+	end
+	T:FillCylinder(CFrame.new(0, -2, 268), 4, 20, Enum.Material.Mud)
+	T:FillCylinder(CFrame.new(0, -2, 450), 4, 26, Enum.Material.Mud)
+	T:FillBlock(CFrame.new(214, -8, 300), Vector3.new(168, 16, 216), Enum.Material.Water)
+	T:FillBall(Vector3.new(-150, -60, 490), 75, Enum.Material.Grass)
+	T:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(42, 56, 36))
+	T:SetMaterialColor(Enum.Material.Mud, Color3.fromRGB(60, 48, 38))
+	T.WaterColor = Color3.fromRGB(14, 24, 28)
+	T.WaterTransparency = 0.15
+	T.WaterReflectance = 0.5
+	T.WaterWaveSize = 0.08
+	T.WaterWaveSpeed = 4
+end
+
+local function buildForest()
+	group("Forest")
+	local rng = Random.new(1987)
+	local placed, tries = 0, 0
+	while placed < 750 and tries < 5000 do
+		tries += 1
+		local x, z = rng:NextNumber(-385, 385), rng:NextNumber(-128, 645)
+		if treeAllowed(x, z) then
+			placed += 1
+			local s = rng:NextNumber(0.9, 1.7)
+			local trunkH = 9 * s
+			cyl(trunkH, 1.3 * s, CFrame.new(x, trunkH / 2, z) * UP, TRUNK, Enum.Material.Wood)
+			local shade = rng:NextNumber(0.8, 1.15)
+			local col = Color3.fromRGB(26 * shade, 44 * shade, 32 * shade)
+			for i = 1, 3 do
+				cyl(3.2 * s, (13 - i * 3) * s, CFrame.new(x, (4 + i * 4) * s, z) * UP, col, Enum.Material.Grass, { CanCollide = false, CastShadow = false })
+			end
+		end
+	end
+	for _ = 1, 70 do
+		local x, z = rng:NextNumber(-385, 385), rng:NextNumber(-128, 645)
+		if treeAllowed(x, z) then
+			local sx, sy, sz = rng:NextNumber(2, 6), rng:NextNumber(1.5, 4), rng:NextNumber(2, 6)
+			P(Vector3.new(sx, sy, sz), CFrame.new(x, sy / 2 - 0.6, z) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 6), rng:NextNumber(-0.3, 0.3)), STONE, Enum.Material.Slate)
+		end
+	end
+end
+
+local function buildBounds()
+	group("Bounds")
+	local function invisible(size, cf)
+		P(size, cf, WOOD, Enum.Material.SmoothPlastic, { Transparency = 1, CanQuery = false, CastShadow = false })
+	end
+	invisible(Vector3.new(4, 120, 820), CFrame.new(-395, 60, 260))
+	invisible(Vector3.new(4, 120, 820), CFrame.new(395, 60, 260))
+	invisible(Vector3.new(800, 120, 4), CFrame.new(0, 60, -135))
+	invisible(Vector3.new(800, 120, 4), CFrame.new(0, 60, 655))
+	-- the camp fence: the only way in is through the gate
+	invisible(Vector3.new(381, 120, 2), CFrame.new(-204.6, 60, 150))
+	invisible(Vector3.new(381, 120, 2), CFrame.new(204.6, 60, 150))
+	zone("RoadLoop", CFrame.new(0, 30, -124), Vector3.new(800, 80, 10))
+end
+
+local function buildRoad()
+	group("Road")
+	-- the broken-down car, facing the camp (+Z)
+	local base = CFrame.new(0, 0, -40)
+	local paint = Color3.fromRGB(66, 82, 94)
+	P(Vector3.new(7, 2.4, 14), base * CFrame.new(0, 2.1, 0), paint, Enum.Material.SmoothPlastic)
+	P(Vector3.new(6.4, 2.2, 7), base * CFrame.new(0, 4.4, -0.8), paint, Enum.Material.SmoothPlastic)
+	P(Vector3.new(6.5, 1.5, 0.2), base * CFrame.new(0, 4.5, 2.75), GLASS, Enum.Material.Glass)
+	P(Vector3.new(6.5, 1.5, 0.2), base * CFrame.new(0, 4.5, -4.35), GLASS, Enum.Material.Glass)
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			cyl(1.2, 2.4, base * CFrame.new(sx * 3.4, 1.2, sz * 4.6), Color3.fromRGB(18, 18, 18), Enum.Material.SmoothPlastic)
+		end
+		local head = P(Vector3.new(1.2, 0.6, 0.2), base * CFrame.new(sx * 2.4, 2.6, 7.05), Color3.fromRGB(255, 240, 200), Enum.Material.Neon)
+		local beamLight = light("SpotLight", head, Color3.fromRGB(255, 235, 200), 45, 1.6, true)
+		beamLight.Face = Enum.NormalId.Back
+		beamLight.Angle = 50
+	end
+	local hood = P(Vector3.new(4, 0.2, 3), base * CFrame.new(0, 3.35, 5), paint, Enum.Material.SmoothPlastic)
+	local smoke = Instance.new("Smoke")
+	smoke.Color = Color3.fromRGB(150, 150, 150)
+	smoke.Opacity = 0.12
+	smoke.RiseVelocity = 3
+	smoke.Size = 2
+	smoke.Parent = hood
+	P(Vector3.new(6.6, 0.3, 3.4), base * CFrame.new(0, 5.2, -8.2) * CFrame.Angles(DEG(55), 0, 0), paint, Enum.Material.SmoothPlastic)
+	local kit = P(Vector3.new(2, 1.1, 1.4), base * CFrame.new(0, 3.85, -5.6), Color3.fromRGB(200, 40, 30), Enum.Material.SmoothPlastic)
+	surfaceText(kit, Enum.NormalId.Front, "EMERGENCY", { Font = Enum.Font.GothamBold, LightInfluence = 0 })
+	light("PointLight", kit, Color3.fromRGB(255, 120, 90), 6, 0.8)
+	map.Prompts.Kit = prompt(kit, "Open", "Emergency kit", 0.6, 10)
+	map.Parts.Kit = kit
+	map.Checkpoints.Car = CFrame.lookAt(Vector3.new(5, 0, -54), Vector3.new(5, 0, 0))
+
+	-- the leaning road sign
+	P(Vector3.new(0.5, 7, 0.5), CFrame.new(11, 3.5, -15), DARK_WOOD)
+	local signBoard = P(Vector3.new(9, 3.2, 0.3), CFrame.new(11, 6.4, -15.3) * CFrame.Angles(0, 0, DEG(7)), WOOD, Enum.Material.WoodPlanks)
+	surfaceText(signBoard, Enum.NormalId.Front, "CAMP HOLLOW PINES - 1 MILE\n<font color=\"" .. INK_RED .. "\">ROAD CLOSED</font>", { Color = Color3.fromRGB(240, 230, 210) })
+
+	-- the ranger shack whose light flickers on in the prologue
+	local shackCf = CFrame.lookAt(Vector3.new(-26, 0, 95), Vector3.new(0, 0, 95))
+	building(shackCf, 10, 9, 8, { FrontDoor = { Width = 3, Height = 6 }, Color = DARK_WOOD })
+	local window = P(Vector3.new(2.4, 2, 0.3), shackCf * CFrame.new(2.8, 4, -4.65), LAMP_ON, Enum.Material.Neon)
+	map.ShackLamp = addLamp(window, light("PointLight", window, LAMP_ON, 30, 2, false), "Shack", true)
+	map.Points.Shack = window.Position
+end
+
+local function buildGate()
+	group("Gate")
+	for _, sx in ipairs({ -1, 1 }) do
+		P(Vector3.new(2.2, 17, 2.2), CFrame.new(sx * 13, 8.5, 150), WOOD)
+		local lantern = P(Vector3.new(0.8, 1, 0.8), CFrame.new(sx * 13, 12.5, 148.6), LAMP_ON, Enum.Material.Neon, { CanCollide = false })
+		addLamp(lantern, light("PointLight", lantern, LAMP_ON, 18, 1.2, true), "Gate")
+	end
+	P(Vector3.new(30, 1.6, 1.6), CFrame.new(0, 16.2, 150), DARK_WOOD)
+	local board = P(Vector3.new(22, 3.2, 0.4), CFrame.new(0, 13.6, 149.6), WOOD, Enum.Material.WoodPlanks)
+	surfaceText(board, Enum.NormalId.Front, 'WELCOME, CAMPERS!\nSTAY WITH YOUR <s>GROUP</s> <font color="' .. INK_RED .. '">COUNSELOR</font>!', { PPS = 40 })
+	-- chained gate bars, two bent apart from the inside
+	for x = -11, 11, 2 do
+		if math.abs(x) > 4 then
+			P(Vector3.new(0.35, 11, 0.35), CFrame.new(x, 5.5, 150), METAL, Enum.Material.CorrodedMetal)
+		end
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		local bottom, mid, top = Vector3.new(sx * 3, 0, 150), Vector3.new(sx * 4.8, 5.5, 150), Vector3.new(sx * 3, 11, 150)
+		beam(bottom, mid, 0.35, METAL, Enum.Material.CorrodedMetal)
+		beam(mid, top, 0.35, METAL, Enum.Material.CorrodedMetal)
+		for _, y in ipairs({ 1, 10 }) do
+			P(Vector3.new(9, 0.35, 0.35), CFrame.new(sx * 7.5, y, 150), METAL, Enum.Material.CorrodedMetal)
+		end
+	end
+	for i = -1, 1 do
+		P(Vector3.new(0.5, 0.3, 0.3), CFrame.new(i * 1.6, 6 - math.abs(i) * 0.4, 149.7) * CFrame.Angles(0, 0, DEG(i * 30)), METAL, Enum.Material.CorrodedMetal, { CanCollide = false })
+	end
+	-- wooden fence either side
+	for _, sx in ipairs({ -1, 1 }) do
+		for x = 20, 80, 6 do
+			P(Vector3.new(0.6, 6, 0.6), CFrame.new(sx * x, 3, 150), DARK_WOOD)
+		end
+		for _, y in ipairs({ 2.5, 5 }) do
+			P(Vector3.new(66, 0.4, 0.3), CFrame.new(sx * 47, y, 150), DARK_WOOD)
+		end
+	end
+	local radio = P(Vector3.new(0.7, 1.3, 0.4), CFrame.new(-13, 5, 148.7), Color3.fromRGB(25, 25, 25), Enum.Material.SmoothPlastic)
+	P(Vector3.new(0.1, 1.2, 0.1), CFrame.new(-12.8, 6.2, 148.7), Color3.fromRGB(25, 25, 25), Enum.Material.SmoothPlastic, { CanCollide = false })
+	light("PointLight", radio, Color3.fromRGB(120, 255, 140), 4, 0.6)
+	map.Parts.Radio = radio
+	map.Prompts.Radio = prompt(radio, "Pick up", "Walkie-talkie", 0.3, 9)
+	page(1, CFrame.new(13, 5.5, 148.85))
+	zone("Gate", CFrame.new(0, 8, 136), Vector3.new(40, 20, 24))
+	map.Checkpoints.Gate = CFrame.lookAt(Vector3.new(0, 0, 140), Vector3.new(0, 0, 200))
+end
+
+local function drawing(part, face)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 50
+	gui.LightInfluence = 0.4
+	gui.Parent = part
+	local caption = Instance.new("TextLabel")
+	caption.BackgroundTransparency = 1
+	caption.Size = UDim2.fromScale(1, 0.25)
+	caption.Font = Enum.Font.IndieFlower
+	caption.TextScaled = true
+	caption.TextColor3 = Color3.fromRGB(40, 40, 120)
+	caption.Text = "our new friend"
+	caption.Parent = gui
+	local kids = Instance.new("TextLabel")
+	kids.BackgroundTransparency = 1
+	kids.Position = UDim2.fromScale(0.02, 0.55)
+	kids.Size = UDim2.fromScale(0.78, 0.4)
+	kids.TextScaled = true
+	kids.TextColor3 = Color3.fromRGB(30, 30, 30)
+	kids.Text = string.rep("웃", 11)
+	kids.Parent = gui
+	local figure = Instance.new("Frame")
+	figure.BackgroundColor3 = Color3.new(0, 0, 0)
+	figure.BorderSizePixel = 0
+	figure.Position = UDim2.fromScale(0.83, 0.22)
+	figure.Size = UDim2.fromScale(0.12, 0.74)
+	figure.Parent = gui
+	for _, x in ipairs({ 0.2, 0.6 }) do
+		local eye = Instance.new("Frame")
+		eye.BackgroundColor3 = Color3.fromRGB(230, 0, 0)
+		eye.BorderSizePixel = 0
+		eye.Position = UDim2.fromScale(x, 0.08)
+		eye.Size = UDim2.fromScale(0.22, 0.05)
+		eye.Parent = figure
+	end
+end
+
+local function buildCabins()
+	group("Cabins")
+	local fire = Vector3.new(0, 0, 268)
+	-- campfire: stones, logs, embers, a marshmallow stick
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		P(Vector3.new(1.4, 1, 1.2), CFrame.new(math.cos(a) * 3.4, 0.4, 268 + math.sin(a) * 3.4) * CFrame.Angles(0, a, 0), STONE, Enum.Material.Slate)
+	end
+	for i = 0, 2 do
+		cyl(5, 0.8, CFrame.new(0, 0.5, 268) * CFrame.Angles(0, i * DEG(60), DEG(10)), Color3.fromRGB(30, 22, 18), Enum.Material.Wood)
+	end
+	local embers = P(Vector3.new(2, 0.4, 2), CFrame.new(0, 0.3, 268), Color3.fromRGB(255, 90, 30), Enum.Material.Neon, { CanCollide = false })
+	light("PointLight", embers, Color3.fromRGB(255, 110, 50), 12, 0.7)
+	local smoke = Instance.new("Smoke")
+	smoke.Opacity = 0.05
+	smoke.Size = 1
+	smoke.RiseVelocity = 2
+	smoke.Parent = embers
+	P(Vector3.new(0.15, 0.15, 4), CFrame.new(1.5, 0.6, 270) * CFrame.Angles(DEG(10), DEG(40), 0), Color3.fromRGB(120, 90, 60), Enum.Material.Wood, { CanCollide = false })
+	for i = 0, 3 do
+		local a = i / 4 * math.pi * 2 + DEG(45)
+		local pos = Vector3.new(math.cos(a) * 10, 0.6, 268 + math.sin(a) * 10)
+		cyl(6, 1.2, CFrame.lookAt(pos, fire + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, DEG(90), 0), TRUNK, Enum.Material.Wood)
+	end
+	for i = 0, 3 do
+		local a = i / 4 * math.pi * 2
+		lampPost(math.cos(a) * 28, 0, 268 + math.sin(a) * 28, "Camp")
+	end
+
+	local cabins = { A = Vector3.new(-48, 0, 238), B = Vector3.new(48, 0, 238), C = Vector3.new(-48, 0, 298), D = Vector3.new(48, 0, 298) }
+	for letter, pos in pairs(cabins) do
+		local cf = CFrame.lookAt(pos, fire)
+		building(cf, 18, 14, 10, { FrontDoor = { Width = 4, Height = 7 }, Windows = { -3, 3 } })
+		local plate = P(Vector3.new(5, 1.4, 0.2), cf * CFrame.new(0, 8.4, -7.1), DARK_WOOD, Enum.Material.WoodPlanks)
+		surfaceText(plate, Enum.NormalId.Front, "CABIN " .. letter)
+		local left, right = cf * CFrame.new(-4.5, 0.6, 4.2), cf * CFrame.new(4.5, 0.6, 4.2)
+		bunk(left)
+		bunk(right)
+		ceilingLamp(cf * CFrame.new(0, 8.8, 0), letter == "C" and "CabinC" or "Cabin", 18)
+		if letter == "A" then
+			page(2, left * CFrame.new(-0.5, 2.0, 0) * FLAT)
+			P(Vector3.new(0.9, 0.04, 1.1), right * CFrame.new(2.6, 2.37, 0), Color3.new(0, 0, 0), Enum.Material.SmoothPlastic, { CanCollide = false })
+		elseif letter == "B" then
+			local paper = P(Vector3.new(3.6, 2.6, 0.05), cf * CFrame.new(0, 7.4, 6.15), PAPER, Enum.Material.SmoothPlastic, { CanCollide = false })
+			drawing(paper, Enum.NormalId.Front)
+		elseif letter == "C" then
+			local tape = P(Vector3.new(1.6, 0.8, 1), right * CFrame.new(-1, 2.35, 0), Color3.fromRGB(35, 35, 38), Enum.Material.SmoothPlastic)
+			for _, x in ipairs({ -0.4, 0.4 }) do
+				cyl(0.1, 0.5, tape.CFrame * CFrame.new(x, 0, -0.5) * CFrame.Angles(0, DEG(90), 0), Color3.fromRGB(180, 180, 180), Enum.Material.Metal, { CanCollide = false })
+			end
+			light("PointLight", tape, Color3.fromRGB(255, 60, 60), 3, 0.5)
+			map.Points.Tape = tape.Position
+			zone("CabinC", cf * CFrame.new(0, 4, 0.5), Vector3.new(16, 8, 12))
+		elseif letter == "D" then
+			page(3, right * CFrame.new(0, 0.05, 0.3) * CFrame.Angles(0, 0.4, 0) * FLAT)
+		end
+	end
+	-- lamps along the paths out of camp
+	for i, z in ipairs({ 178, 208, 238 }) do
+		lampPost(i % 2 == 0 and 6 or -6, 0, z, "Path")
+	end
+	for i, z in ipairs({ 320, 350, 380, 410 }) do
+		lampPost(i % 2 == 0 and 6 or -6, 0, z, "Path")
+	end
+	for _, t in ipairs({ 0.4, 0.75 }) do
+		lampPost(122 * t, 0, 268 + 32 * t + 6, "Path")
+		lampPost(-118 * t, 0, 268 + 62 * t + 6, "Path")
+	end
+	flareBox(CFrame.new(12, 0, 252) * CFrame.Angles(0, DEG(30), 0))
+	zone("Campfire", CFrame.new(0, 8, 262), Vector3.new(60, 16, 44))
+	map.Checkpoints.Campfire = CFrame.lookAt(Vector3.new(0, 0, 222), fire)
+	map.Points.Sighting = CFrame.lookAt(Vector3.new(0, 0, 372), fire)
+end
+
+local function buildLake()
+	group("Lake")
+	-- ramp + dock
+	P(Vector3.new(6.2, 0.5, 8), CFrame.new(119, 0.55, 300) * CFrame.Angles(0, 0, DEG(11)), WOOD, Enum.Material.WoodPlanks)
+	P(Vector3.new(86, 0.5, 8), CFrame.new(165, 0.9, 300), WOOD, Enum.Material.WoodPlanks)
+	for x = 126, 206, 8 do
+		for _, sz in ipairs({ -1, 1 }) do
+			P(Vector3.new(0.8, 10, 0.8), CFrame.new(x, -4.3, 300 + sz * 3.6), DARK_WOOD)
+		end
+	end
+	local dockLamps = {}
+	for i, x in ipairs({ 135, 150, 165, 180, 195 }) do
+		table.insert(dockLamps, lampPost(x, 1.15, i % 2 == 0 and 303.4 or 296.6, "Dock"))
+	end
+	map.DockLamps = dockLamps
+	-- boathouse at the end of the dock
+	P(Vector3.new(30, 1, 30), CFrame.new(222, 0.65, 300), DARK_WOOD, Enum.Material.WoodPlanks)
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			P(Vector3.new(1.2, 12, 1.2), CFrame.new(222 + sx * 14, -5.5, 300 + sz * 14), DARK_WOOD)
+		end
+	end
+	local bh = CFrame.lookAt(Vector3.new(221, 1.15, 300), Vector3.new(0, 1.15, 300))
+	building(bh, 22, 22, 11, { FrontDoor = { Width = 6, Height = 8 }, Windows = { -5, 5 } })
+	local door = P(Vector3.new(6, 8, 0.8), bh * CFrame.new(0, 4.6, -10.6), DARK_WOOD, Enum.Material.WoodPlanks, { Transparency = 1, CanCollide = false, CanQuery = false })
+	map.Parts.BoathouseDoor = door
+	local bar = P(Vector3.new(7, 0.5, 0.5), bh * CFrame.new(5, 1.2, -8.5), DARK_WOOD)
+	map.Prompts.BarDoor = prompt(bar, "Bar the door", "Boathouse door", 0.5, 10)
+	map.Prompts.BarDoor.Enabled = false
+	for i = -2, 1 do
+		P(Vector3.new(1.6, 2.2, 0.5), bh * CFrame.new(i * 3 + 1.5, 5, 9.9), Color3.fromRGB(230, 110, 30), Enum.Material.Fabric)
+	end
+	page(4, bh * CFrame.new(-10.15, 5.5, 2) * CFrame.Angles(0, DEG(-90), 0))
+	page(5, bh * CFrame.new(4.5, 4.6, 9.6))
+	ceilingLamp(bh * CFrame.new(0, 9.8, 0), "Boathouse", 22)
+	flareBox(bh * CFrame.new(-7, 0.6, 7))
+	-- overturned canoes on the shore; the first one knocks
+	local canoes = { Vector3.new(110, 0, 320), Vector3.new(104, 0, 328), Vector3.new(112, 0, 278) }
+	for i, pos in ipairs(canoes) do
+		local hull = P(Vector3.new(2.8, 1.1, 11), CFrame.new(pos + Vector3.new(0, 0.55, 0)) * CFrame.Angles(0, DEG(15 * i), 0), Color3.fromRGB(110, 36, 28), Enum.Material.Wood)
+		local keel = P(Vector3.new(2.2, 0.5, 9), hull.CFrame * CFrame.new(0, 0.7, 0), Color3.fromRGB(110, 36, 28), Enum.Material.Wood)
+		if i == 1 then
+			map.Parts.Canoe = hull
+			map.Parts.CanoeKeel = keel
+			map.Prompts.CanoeFlip = prompt(hull, "Flip", "Canoe", 0.6, 9)
+			map.Points.Canoe = hull.Position
+		end
+	end
+	map.Parts.Footprints = {}
+	for i = 0, 5 do
+		local fp = P(Vector3.new(0.7, 0.05, 1.2), CFrame.new(113 + i * 3, 0.05, 321 + i * 1.6 + (i % 2) * 0.8) * CFrame.Angles(0, DEG(-70), 0), Color3.fromRGB(20, 30, 40), Enum.Material.SmoothPlastic, { CanCollide = false, Transparency = 1 })
+		table.insert(map.Parts.Footprints, fp)
+	end
+	flareBox(CFrame.new(116, 0, 291))
+	zone("Shore", CFrame.new(114, 6, 298), Vector3.new(20, 12, 20))
+	zone("Canoes", CFrame.new(110, 6, 318), Vector3.new(26, 12, 26))
+	zone("Dock", CFrame.new(170, 5, 300), Vector3.new(30, 12, 12))
+	zone("Boathouse", bh * CFrame.new(0, 5, 0), Vector3.new(20, 10, 20))
+	map.Checkpoints.Dock = CFrame.lookAt(Vector3.new(104, 0, 300), Vector3.new(200, 0, 300))
+	map.Points.LakeRise = CFrame.lookAt(Vector3.new(141, 0, 312), Vector3.new(170, 0, 300))
+	map.Points.LakeSink = Vector3.new(185, 0, 350)
+end
+
+local function buildMessHall()
+	group("MessHall")
+	local cf = CFrame.lookAt(Vector3.new(-150, 0, 330), Vector3.new(0, 0, 330)) -- door faces east
+	building(cf, 40, 64, 14, {
+		FrontDoor = { Width = 8, Height = 10 },
+		RightDoor = { Width = 5, Height = 8, Offset = 0 },
+		Pitch = 16,
+		Windows = { -20, -6, 8 },
+	})
+	wall(cf * CFrame.new(0, 0, 16), 40, 14, WOOD, Enum.Material.WoodPlanks, { Width = 6, Height = 8 }) -- kitchen wall
+	local sign = P(Vector3.new(10, 2, 0.3), cf * CFrame.new(0, 11.5, -32.3), DARK_WOOD, Enum.Material.WoodPlanks)
+	surfaceText(sign, Enum.NormalId.Front, "MESS HALL")
+	-- three long tables; the middle one is set for twelve
+	for _, z in ipairs({ 318, 330, 342 }) do
+		P(Vector3.new(36, 0.5, 4), CFrame.new(-142, 3.4, z), WOOD, Enum.Material.WoodPlanks)
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				P(Vector3.new(0.5, 2.6, 0.5), CFrame.new(-142 + sx * 17, 1.9, z + sz * 1.6), DARK_WOOD)
+			end
+			P(Vector3.new(36, 0.4, 1.4), CFrame.new(-142, 2, z + sx * 3.2), DARK_WOOD, Enum.Material.WoodPlanks)
+		end
+	end
+	for i = 0, 5 do
+		for _, sz in ipairs({ -1, 1 }) do
+			local clean = i == 3 and sz == 1
+			cyl(0.15, 1.4, CFrame.new(-157 + i * 6, 3.72, 330 + sz * 1.2) * UP, clean and Color3.fromRGB(240, 240, 235) or Color3.fromRGB(88, 78, 46), Enum.Material.SmoothPlastic, { CanCollide = false })
+		end
+	end
+	for _, x in ipairs({ -158, -142, -126 }) do
+		for _, z in ipairs({ 320, 340 }) do
+			ceilingLamp(CFrame.new(x, 12.4, z), "Hall", 26)
+		end
+	end
+	ceilingLamp(CFrame.new(-174, 12.4, 330), "Hall", 22)
+	-- kitchen
+	P(Vector3.new(12, 3, 3), CFrame.new(-174, 2.1, 312.5), METAL, Enum.Material.Metal)
+	P(Vector3.new(12, 3, 3), CFrame.new(-174, 2.1, 347.5), METAL, Enum.Material.Metal)
+	P(Vector3.new(3, 3.4, 5), CFrame.new(-179.6, 2.3, 330), Color3.fromRGB(30, 30, 32), Enum.Material.Metal)
+	page(6, CFrame.new(-172, 3.65, 347.5) * FLAT)
+	local key = P(Vector3.new(0.3, 0.15, 1), CFrame.new(-178, 3.68, 312.5), Color3.fromRGB(190, 150, 60), Enum.Material.Metal, { CanCollide = false })
+	light("PointLight", key, Color3.fromRGB(255, 210, 120), 4, 0.5)
+	map.Parts.Key = key
+	map.Prompts.Key = prompt(key, "Take", "Rusty key", 0.3, 8)
+	-- three fuses: hall corner shelf, kitchen counter, outside behind the kitchen
+	P(Vector3.new(3, 4, 1.5), CFrame.new(-122, 2.6, 348), DARK_WOOD)
+	map.Parts.Fuses, map.Prompts.Fuses = {}, {}
+	for i, pos in ipairs({ Vector3.new(-122, 5.05, 348), Vector3.new(-170, 4.05, 312.5), Vector3.new(-189, 0.45, 344) }) do
+		local fuse = P(Vector3.new(0.5, 0.9, 0.5), CFrame.new(pos), Color3.fromRGB(235, 200, 60), Enum.Material.Neon, { CanCollide = false })
+		light("PointLight", fuse, Color3.fromRGB(255, 220, 100), 5, 0.6)
+		map.Parts.Fuses[i] = fuse
+		map.Prompts.Fuses[i] = prompt(fuse, "Take", "Fuse", 0.3, 8)
+	end
+	for i, pos in ipairs({ Vector3.new(-190, 1.5, 338), Vector3.new(-193, 1.5, 341), Vector3.new(-191, 4.5, 339) }) do
+		P(Vector3.new(3, 3, 3), CFrame.new(pos) * CFrame.Angles(0, i * 0.4, 0), WOOD, Enum.Material.WoodPlanks)
+	end
+	-- generator room (north annex)
+	local annex = CFrame.lookAt(Vector3.new(-150, 0, 358.4), Vector3.new(-150, 0, 300))
+	building(annex, 20, 16, 11, { FrontDoor = { Width = 5, Height = 8 } })
+	local gen = P(Vector3.new(6, 4, 4), CFrame.new(-150, 2.6, 360), Color3.fromRGB(70, 80, 60), Enum.Material.Metal)
+	surfaceText(gen, Enum.NormalId.Front, "GENERATOR\n<font size=\"14\">NEEDS 3 FUSES</font>", { LightInfluence = 0.2 })
+	map.Prompts.Generator = prompt(gen, "Start", "Generator", 1.2, 10)
+	map.Points.Generator = gen.Position
+	ceilingLamp(CFrame.new(-150, 9.8, 358), "Hall", 18)
+	page(7, CFrame.new(-156, 4.5, 365.55))
+	flareBox(CFrame.new(-110, 0, 342))
+	flareBox(CFrame.new(-160, 0.6, 314))
+	flareBox(CFrame.new(-143, 0.6, 363))
+	zone("MessHall", CFrame.new(-142, 6, 330), Vector3.new(46, 12, 38))
+	map.Checkpoints.MessHall = CFrame.lookAt(Vector3.new(-100, 0, 330), Vector3.new(-150, 0, 330))
+	map.Points.Kitchen = CFrame.lookAt(Vector3.new(-174, 0.6, 330), Vector3.new(-100, 0.6, 330))
+	lampPost(-144, 0, 385, "Path")
+	lampPost(-156, 0, 425, "Path")
+end
+
+local function buildOffice()
+	group("Office")
+	P(Vector3.new(18, 16, 16), CFrame.new(-150, 7.2, 490), STONE, Enum.Material.Slate)
+	P(Vector3.new(6, 0.8, 3), CFrame.new(-150, 15, 481.4), STONE, Enum.Material.Slate)
+	local cf = CFrame.lookAt(Vector3.new(-150, 15.2, 490), Vector3.new(-150, 15.2, 300))
+	building(cf, 16, 14, 10, { FrontDoor = { Width = 4, Height = 7 }, Color = DARK_WOOD, Windows = { 0 } })
+	local door = P(Vector3.new(4, 7, 0.5), cf * CFrame.new(0, 4.1, -6.6), Color3.fromRGB(40, 28, 20), Enum.Material.WoodPlanks)
+	surfaceText(door, Enum.NormalId.Front, "DIRECTOR\nW. CRANE", { PPS = 30 })
+	map.Parts.OfficeDoor = door
+	map.Prompts.OfficeDoor = prompt(door, "Unlock", "Director's office", 0.6, 9)
+	P(Vector3.new(6, 0.4, 3), cf * CFrame.new(0, 3.6, 3), DARK_WOOD)
+	P(Vector3.new(5.6, 3, 2.6), cf * CFrame.new(0, 2.1, 3), DARK_WOOD)
+	page(9, cf * CFrame.new(0.5, 3.83, 3) * CFrame.Angles(0, 0.3, 0) * FLAT, Color3.fromRGB(205, 180, 135))
+	for _, x in ipairs({ -5.5, 5.5 }) do
+		P(Vector3.new(2.2, 5, 2), cf * CFrame.new(x, 3.1, 5.2), METAL, Enum.Material.Metal)
+	end
+	local photo = P(Vector3.new(0.2, 3, 4), cf * CFrame.new(-7.4, 6, 0), DARK_WOOD)
+	local gui, label = surfaceText(photo, Enum.NormalId.Right, "STAFF - SUMMER 1987\n\n웃  웃  웃  웃", { Font = Enum.Font.Antique, Color = Color3.fromRGB(60, 50, 40), YAlign = Enum.TextYAlignment.Top })
+	label.BackgroundTransparency = 0
+	label.BackgroundColor3 = Color3.fromRGB(200, 185, 150)
+	local blur = Instance.new("Frame")
+	blur.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+	blur.BackgroundTransparency = 0.25
+	blur.BorderSizePixel = 0
+	blur.Position = UDim2.fromScale(0.45, 0.3)
+	blur.Size = UDim2.fromScale(0.12, 0.65)
+	blur.Parent = gui
+	for _, x in ipairs({ 0.15, 0.6 }) do
+		local eye = Instance.new("Frame")
+		eye.BackgroundColor3 = Color3.fromRGB(220, 0, 0)
+		eye.BorderSizePixel = 0
+		eye.Position = UDim2.fromScale(x, 0.06)
+		eye.Size = UDim2.fromScale(0.25, 0.04)
+		eye.Parent = blur
+	end
+	ceilingLamp(cf * CFrame.new(0, 9, 0), "Office", 16)
+	flareBox(CFrame.new(-140, 0, 440))
+end
+
+local function buildFlagpole()
+	group("Flagpole")
+	local center = Vector3.new(0, 0, 450)
+	P(Vector3.new(4, 1, 4), CFrame.new(0, 0.5, 450), STONE, Enum.Material.Concrete)
+	cyl(40, 0.9, CFrame.new(0, 20, 450) * UP, METAL, Enum.Material.Metal)
+	P(Vector3.new(7, 4.5, 0.15), CFrame.new(3.9, 36.5, 450) * CFrame.Angles(0, 0, DEG(-6)), Color3.fromRGB(110, 25, 25), Enum.Material.Fabric, { CanCollide = false })
+	local roster = P(Vector3.new(2.6, 3.4, 0.08), CFrame.new(0, 5.5, 449.5), PAPER, Enum.Material.SmoothPlastic, { CanCollide = false })
+	roster.Name = "Roster"
+	local lines = { "<b>CAMP HOLLOW PINES - ROSTER</b>" }
+	for i, name in ipairs(Story.RosterNames) do
+		table.insert(lines, string.format('<font color="%s"><s>%d. %s</s></font>', INK_RED, i, name))
+	end
+	table.insert(lines, "12. MARCY HAL")
+	surfaceText(roster, Enum.NormalId.Front, table.concat(lines, "\n"), {
+		Font = Enum.Font.IndieFlower,
+		Color = Color3.fromRGB(30, 30, 40),
+		PPS = 60,
+		LightInfluence = 0.25,
+		XAlign = Enum.TextXAlignment.Left,
+	})
+	P(Vector3.new(0.12, 0.12, 0.9), CFrame.new(0.45, 4.25, 449.1) * CFrame.Angles(DEG(20), DEG(15), 0), Color3.fromRGB(230, 180, 40), Enum.Material.Wood, { CanCollide = false })
+	local fire = Instance.new("Fire")
+	fire.Enabled = false
+	fire.Size = 2
+	fire.Heat = 6
+	fire.Parent = roster
+	map.Parts.Roster = roster
+	map.Parts.RosterFire = fire
+	page(8, CFrame.new(0, 5.2, 450.5))
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2 + DEG(22.5)
+		local pos = Vector3.new(math.cos(a) * 22, 0, 450 + math.sin(a) * 22)
+		local bench = CFrame.lookAt(pos, center)
+		P(Vector3.new(8, 0.5, 1.6), bench * CFrame.new(0, 1.7, 0), WOOD, Enum.Material.WoodPlanks)
+		for _, sx in ipairs({ -1, 1 }) do
+			P(Vector3.new(0.5, 1.5, 1.4), bench * CFrame.new(sx * 3.4, 0.75, 0), DARK_WOOD)
+		end
+	end
+	for i = 0, 3 do
+		local a = i / 4 * math.pi * 2 + DEG(45)
+		lampPost(math.cos(a) * 32, 0, 450 + math.sin(a) * 32, "Flagpole")
+	end
+	for _, off in ipairs({ Vector3.new(16, 0, 0), Vector3.new(-16, 0, 0), Vector3.new(0, 0, -16), Vector3.new(0, 0, 16) }) do
+		flareBox(CFrame.lookAt(center + off, center))
+	end
+	zone("Flagpole", CFrame.new(0, 8, 450), Vector3.new(64, 20, 64))
+	map.Checkpoints.Flagpole = CFrame.lookAt(Vector3.new(0, 0, 404), center)
+	map.Points.FlagpoleBehind = CFrame.lookAt(Vector3.new(0, 0, 459), Vector3.new(0, 0, 400))
+end
+
+------------------------------------------------------------------ public
+
+function MapBuilder.setupLighting()
+	Lighting.ClockTime = 0.2
+	Lighting.Brightness = 1
+	Lighting.Ambient = Color3.fromRGB(14, 14, 20)
+	Lighting.OutdoorAmbient = Color3.fromRGB(34, 36, 48)
+	Lighting.EnvironmentDiffuseScale = 0.15
+	Lighting.EnvironmentSpecularScale = 0.25
+	Lighting.GlobalShadows = true
+	Lighting.ExposureCompensation = 0
+	local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+	atm.Density = 0.42
+	atm.Offset = 0.15
+	atm.Color = Color3.fromRGB(46, 52, 62)
+	atm.Decay = Color3.fromRGB(24, 26, 34)
+	atm.Glare = 0
+	atm.Haze = 2.2
+	atm.Parent = Lighting
+	local cc = Lighting:FindFirstChild("HeadcountCC") or Instance.new("ColorCorrectionEffect")
+	cc.Name = "HeadcountCC"
+	cc.Saturation = -0.3
+	cc.Contrast = 0.12
+	cc.Brightness = -0.02
+	cc.TintColor = Color3.fromRGB(205, 215, 235)
+	cc.Parent = Lighting
+	local bloom = Lighting:FindFirstChild("HeadcountBloom") or Instance.new("BloomEffect")
+	bloom.Name = "HeadcountBloom"
+	bloom.Intensity = 0.8
+	bloom.Size = 30
+	bloom.Threshold = 1.2
+	bloom.Parent = Lighting
+end
+
+function MapBuilder.build()
+	local old = workspace:FindFirstChild("Camp")
+	if old then
+		old:Destroy()
+	end
+	root = Instance.new("Folder")
+	root.Name = "Camp"
+	map = {
+		Folder = root,
+		Lamps = {},
+		Pages = {},
+		FlareBoxes = {},
+		Prompts = {},
+		Parts = {},
+		Zones = {},
+		Points = {},
+		Checkpoints = {},
+		MonsterSpawns = {},
+	}
+	buildTerrain()
+	buildBounds()
+	buildRoad()
+	buildGate()
+	buildCabins()
+	buildLake()
+	buildMessHall()
+	buildOffice()
+	buildFlagpole()
+	buildForest()
+
+	for _, xz in ipairs({ { -70, 200 }, { 70, 200 }, { -80, 380 }, { 80, 380 }, { 60, 520 }, { -60, 520 }, { -230, 250 }, { -240, 420 }, { 100, 170 }, { -100, 170 }, { 0, 560 }, { -60, 300 } }) do
+		table.insert(map.MonsterSpawns, Vector3.new(xz[1], 0, xz[2]))
+	end
+
+	group("Spawn")
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Anchored = true
+	spawn.CanCollide = false
+	spawn.CanQuery = false
+	spawn.Transparency = 1
+	spawn.Size = Vector3.new(6, 1, 6)
+	spawn.Duration = 0
+	spawn.Neutral = true
+	spawn.CFrame = map.Checkpoints.Car * CFrame.new(0, 0.5, 0)
+	spawn.Parent = current
+	map.Spawn = spawn
+
+	root.Parent = workspace
+	return map
+end
+
+return MapBuilder
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX00000009">
+<Properties>
+<string name="Name">Monetization</string>
+<ProtectedString name="Source"><![CDATA[-- Game passes, developer products, badges and saved stats.
+-- IDs live in Config. Anything left at 0 is simply skipped, so the game runs before you set them up.
+
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local BadgeService = game:GetService("BadgeService")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
+local Monetization = {}
+Monetization.OnPassGranted = nil -- function(player, passName), set by the Director
+Monetization.ProductHandlers = {} -- [productName] = function(player) -> granted (bool)
+
+local store
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore("Headcount_v1")
+	end)
+	if ok then
+		store = result
+	end
+end
+
+local loaded = {} -- players whose saved data loaded fine (never overwrite data we failed to read)
+local grantedReceipts = {} -- PurchaseId -> true for this server
+
+local function passName(passId)
+	for name, id in pairs(Config.GamePasses) do
+		if id == passId and id ~= 0 then
+			return name
+		end
+	end
+	return nil
+end
+
+local function productName(productId)
+	for name, id in pairs(Config.Products) do
+		if id == productId and id ~= 0 then
+			return name
+		end
+	end
+	return nil
+end
+
+local function grantPass(player, name)
+	if player:GetAttribute(name) then
+		return
+	end
+	player:SetAttribute(name, true)
+	if Monetization.OnPassGranted then
+		Monetization.OnPassGranted(player, name)
+	end
+end
+
+function Monetization.AwardBadge(player, name)
+	local id = Config.Badges[name]
+	if not id or id == 0 then
+		return
+	end
+	task.spawn(function()
+		pcall(BadgeService.AwardBadge, BadgeService, player.UserId, id)
+	end)
+end
+
+local function save(player)
+	if not store or not loaded[player] then
+		return
+	end
+	local stats = player:FindFirstChild("leaderstats")
+	local escapes = stats and stats:FindFirstChild("Escapes")
+	if escapes then
+		pcall(store.SetAsync, store, "u" .. player.UserId, { Escapes = escapes.Value })
+	end
+end
+
+function Monetization.SetupPlayer(player)
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	local escapes = Instance.new("IntValue")
+	escapes.Name = "Escapes"
+	escapes.Parent = stats
+	local pages = Instance.new("IntValue")
+	pages.Name = "Pages"
+	pages.Parent = stats
+	stats.Parent = player
+
+	for name, id in pairs(Config.GamePasses) do
+		if id ~= 0 then
+			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, id)
+			if ok and owns then
+				grantPass(player, name)
+			end
+		end
+	end
+	if store then
+		local ok, data = pcall(store.GetAsync, store, "u" .. player.UserId)
+		if ok then
+			loaded[player] = true
+			if type(data) == "table" and type(data.Escapes) == "number" then
+				escapes.Value = data.Escapes
+			end
+		end
+	end
+	Monetization.AwardBadge(player, "Welcome")
+end
+
+function Monetization.AddEscape(player)
+	local stats = player:FindFirstChild("leaderstats")
+	if stats and stats:FindFirstChild("Escapes") then
+		stats.Escapes.Value += 1
+		task.spawn(save, player)
+	end
+end
+
+function Monetization.AddPage(player)
+	local stats = player:FindFirstChild("leaderstats")
+	if stats and stats:FindFirstChild("Pages") then
+		stats.Pages.Value += 1
+	end
+end
+
+function Monetization.ResetRoundStats()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local stats = player:FindFirstChild("leaderstats")
+		if stats and stats:FindFirstChild("Pages") then
+			stats.Pages.Value = 0
+		end
+	end
+end
+
+function Monetization.init()
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+		local name = passName(passId)
+		if purchased and name then
+			grantPass(player, name)
+		end
+	end)
+
+	MarketplaceService.ProcessReceipt = function(info)
+		if grantedReceipts[info.PurchaseId] then
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
+		local player = Players:GetPlayerByUserId(info.PlayerId)
+		local name = productName(info.ProductId)
+		local handler = name and Monetization.ProductHandlers[name]
+		if not player or not handler then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		local ok, granted = pcall(handler, player)
+		if ok and granted then
+			grantedReceipts[info.PurchaseId] = true
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		save(player)
+		loaded[player] = nil
+	end)
+	game:BindToClose(function()
+		for _, player in ipairs(Players:GetPlayers()) do
+			save(player)
+		end
+	end)
+end
+
+return Monetization
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX0000000A">
+<Properties>
+<string name="Name">Monster</string>
+<ProtectedString name="Source"><![CDATA[-- The Twelfth: a tall, faceless black figure with two glowing red eyes.
+-- It is anchored and glides (moved every frame), using PathfindingService to get around walls.
+-- The Director decides when it appears, hunts, leaves and respawns; this module only does the doing.
+
+local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local M = Config.Monster
+
+local Monster = {}
+Monster.__index = Monster
+
+local HIDDEN = CFrame.new(0, -300, 0)
+local ROOT_HEIGHT = 5.5 -- root sits at hip height above its feet
+local HEAD_OFFSET = CFrame.new(0, 6, 0)
+local BLACK = Color3.fromRGB(8, 8, 10)
+local EYE_RED = Color3.fromRGB(255, 20, 20)
+
+local BODY = {
+	{ "LeftLeg", Vector3.new(0.9, 5.6, 0.9), CFrame.new(-0.7, -2.8, 0) },
+	{ "RightLeg", Vector3.new(0.9, 5.6, 0.9), CFrame.new(0.7, -2.8, 0) },
+	{ "Torso", Vector3.new(2.6, 4.4, 1.2), CFrame.new(0, 2.2, 0) },
+	{ "LeftArm", Vector3.new(0.7, 6.8, 0.7), CFrame.new(-1.75, 0.8, 0) * CFrame.Angles(0, 0, math.rad(-4)) },
+	{ "RightArm", Vector3.new(0.7, 6.8, 0.7), CFrame.new(1.75, 0.8, 0) * CFrame.Angles(0, 0, math.rad(4)) },
+	{ "Neck", Vector3.new(0.6, 0.9, 0.6), CFrame.new(0, 4.7, 0) },
+}
+
+function Monster.new(parent, getTargets)
+	local self = setmetatable({}, Monster)
+	self.GetTargets = getTargets
+	self.Speed = M.BaseSpeed
+	self.State = "Hidden" -- Hidden, Visible, Hunting, Leaving, Downed, Dead
+	self.Hits = 0
+	self.StunnedUntil = 0
+	self.PauseUntil = 0
+	self.CFrame = HIDDEN
+	self.HeadTwitch = CFrame.identity
+	self.NextTwitch = 0
+	self.Fade = 0
+	self.Parts, self.Offsets, self.FollowHead, self.Base, self.Eyes = {}, {}, {}, {}, {}
+	self.Alive = true
+
+	local model = Instance.new("Model")
+	model.Name = "TheTwelfth"
+	self.Model = model
+
+	local function add(name, size, offset, color, material, followHead)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color or BLACK
+		p.Material = material or Enum.Material.SmoothPlastic
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanTouch = false
+		p.CFrame = HIDDEN * offset
+		p.Parent = model
+		table.insert(self.Parts, p)
+		table.insert(self.Offsets, offset)
+		table.insert(self.FollowHead, followHead == true)
+		self.Base[p] = 0
+		return p
+	end
+
+	local root = add("Root", Vector3.new(2, 2, 1), CFrame.identity)
+	root.Transparency = 1
+	self.Base[root] = 1
+	self.Root = root
+	model.PrimaryPart = root
+	for _, b in ipairs(BODY) do
+		local p = add(b[1], b[2], b[3])
+		if b[1] == "Torso" then
+			self.Torso = p
+		end
+	end
+	local head = add("Head", Vector3.new(1.5, 2.1, 1.5), CFrame.identity, nil, nil, true)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Parent = head
+	self.Head = head
+	for _, x in ipairs({ -0.33, 0.33 }) do
+		table.insert(self.Eyes, add("Eye", Vector3.new(0.32, 0.18, 0.1), CFrame.new(x, 0.25, -0.74), EYE_RED, Enum.Material.Neon, true))
+	end
+	local glow = Instance.new("PointLight")
+	glow.Color = EYE_RED
+	glow.Range = 10
+	glow.Brightness = 3
+	glow.Parent = self.Eyes[1]
+	self.EyeLight = glow
+	add("Whistle", Vector3.new(0.25, 0.25, 0.6), CFrame.new(0, 3.3, -0.7), Color3.fromRGB(190, 190, 195), Enum.Material.Metal)
+
+	local fire = Instance.new("Fire")
+	fire.Enabled = false
+	fire.Size = 7
+	fire.Heat = 14
+	fire.Color = Color3.fromRGB(255, 130, 40)
+	fire.SecondaryColor = Color3.fromRGB(255, 40, 0)
+	fire.Parent = self.Torso
+	self.Fire = fire
+
+	self.RayParams = RaycastParams.new()
+	self.RayParams.FilterType = Enum.RaycastFilterType.Exclude
+	self.RayParams.IgnoreWater = false
+	self.RayParams.RespectCanCollide = true
+	self.Path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 6, AgentCanJump = false, WaypointSpacing = 6 })
+
+	model.Parent = parent
+	self.Conn = RunService.Heartbeat:Connect(function(dt)
+		self:_step(dt)
+	end)
+	task.spawn(function()
+		self:_pathLoop()
+	end)
+	return self
+end
+
+------------------------------------------------------------------ internals
+
+function Monster:_apply(rootCf)
+	local headCf = rootCf * HEAD_OFFSET * self.HeadTwitch
+	local cfs = table.create(#self.Parts)
+	for i, _ in ipairs(self.Parts) do
+		cfs[i] = (self.FollowHead[i] and headCf or rootCf) * self.Offsets[i]
+	end
+	workspace:BulkMoveTo(self.Parts, cfs, Enum.BulkMoveMode.FireAllEvents)
+end
+
+function Monster:_setFade(alpha)
+	self.Fade = alpha
+	for _, p in ipairs(self.Parts) do
+		p.Transparency = math.max(self.Base[p], alpha)
+	end
+end
+
+function Monster:_fadeTo(alpha, duration, delay)
+	if self.FadeTween then
+		self.FadeTween:Cancel()
+	end
+	local value = Instance.new("NumberValue")
+	value.Value = self.Fade
+	value.Changed:Connect(function(v)
+		self:_setFade(v)
+	end)
+	local tween = TweenService:Create(value, TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, delay or 0), { Value = alpha })
+	self.FadeTween = tween
+	tween.Completed:Connect(function()
+		value:Destroy()
+	end)
+	tween:Play()
+end
+
+function Monster:_feet()
+	return self.CFrame.Position - Vector3.new(0, ROOT_HEIGHT, 0)
+end
+
+function Monster:_groundY(feet)
+	local ignore = { self.Model }
+	for _, t in ipairs(self.GetTargets()) do
+		local character = t.Root.Parent
+		if character then
+			table.insert(ignore, character)
+		end
+	end
+	self.RayParams.FilterDescendantsInstances = ignore
+	local result = workspace:Raycast(feet + Vector3.new(0, 4, 0), Vector3.new(0, -30, 0), self.RayParams)
+	return result and result.Position.Y
+end
+
+-- Turns a ground-level CFrame into a root CFrame standing on whatever is below it.
+function Monster:_rootAt(groundCf)
+	local pos = groundCf.Position
+	local g = self:_groundY(pos) or pos.Y
+	return CFrame.new(pos.X, g + ROOT_HEIGHT, pos.Z) * groundCf.Rotation
+end
+
+function Monster:_step(dt)
+	if self.State == "Hidden" or self.State == "Dead" then
+		return
+	end
+	local now = os.clock()
+	if now >= self.NextTwitch then
+		self.NextTwitch = now + math.random(12, 40) / 10
+		self.HeadTwitch = CFrame.Angles(math.rad(math.random(-20, 20)), math.rad(math.random(-35, 35)), math.rad(math.random(-40, 40)))
+		self.TwitchEnds = now + 0.18
+	elseif self.TwitchEnds and now > self.TwitchEnds then
+		self.HeadTwitch = CFrame.identity
+		self.TwitchEnds = nil
+	end
+
+	local s = self.Scripted
+	if s then
+		local a = math.clamp((now - s.Start) / s.Duration, 0, 1)
+		self.CFrame = s.From:Lerp(s.To, a)
+		if a >= 1 then
+			self.Scripted = nil
+			if s.Done then
+				task.spawn(s.Done)
+			end
+		end
+	elseif self.State == "Hunting" then
+		self:_hunt(dt, now)
+	end
+
+	local cf = self.CFrame
+	if now < self.StunnedUntil then
+		cf = cf * CFrame.new(math.random(-10, 10) / 50, 0, math.random(-10, 10) / 50) * CFrame.Angles(0, 0, math.rad(math.random(-8, 8)))
+	end
+	self:_apply(cf)
+end
+
+function Monster:_hunt(dt, now)
+	if self.HuntEndsAt and now >= self.HuntEndsAt then
+		self:EndHunt()
+		return
+	end
+	if now < self.StunnedUntil or now < self.PauseUntil then
+		return
+	end
+	local feet = self:_feet()
+	local best, bestDist
+	for _, t in ipairs(self.GetTargets()) do
+		local pos = t.Root.Position
+		local flat = Vector3.new(pos.X - feet.X, 0, pos.Z - feet.Z).Magnitude
+		if flat <= M.CatchRange and math.abs(pos.Y - feet.Y) < 9 then
+			self.PauseUntil = now + 1.6 -- stands still while it crosses the name off
+			if self.OnCatch then
+				task.spawn(self.OnCatch, t.Player)
+			end
+			return
+		end
+		local d = (pos - feet).Magnitude
+		if not bestDist or d < bestDist then
+			best, bestDist = t, d
+		end
+	end
+	self.Target = best
+	if not best then
+		return
+	end
+
+	local goal = best.Root.Position
+	local wps = self.Waypoints
+	if wps then
+		local wp = wps[self.WaypointIndex]
+		while wp and Vector3.new(wp.X - feet.X, 0, wp.Z - feet.Z).Magnitude < 2.5 do
+			self.WaypointIndex += 1
+			wp = wps[self.WaypointIndex]
+		end
+		if wp then
+			goal = wp
+		end
+	end
+	local delta = Vector3.new(goal.X - feet.X, 0, goal.Z - feet.Z)
+	local dist = delta.Magnitude
+	if dist < 0.05 then
+		return
+	end
+	local dir = delta / dist
+	local nextFeet = feet + dir * math.min(dist, self.Speed * dt)
+	local ground = self:_groundY(nextFeet)
+	if ground then
+		nextFeet = Vector3.new(nextFeet.X, feet.Y + (ground - feet.Y) * math.min(1, dt * 12), nextFeet.Z)
+	end
+	local rootPos = nextFeet + Vector3.new(0, ROOT_HEIGHT, 0)
+	self.CFrame = CFrame.lookAt(rootPos, rootPos + dir)
+end
+
+function Monster:_pathLoop()
+	while self.Alive do
+		local target = self.Target
+		if self.State == "Hunting" and target and not self.Scripted then
+			local ok = pcall(function()
+				self.Path:ComputeAsync(self:_feet(), target.Root.Position)
+			end)
+			if ok and self.Path.Status == Enum.PathStatus.Success then
+				local wps = {}
+				for _, w in ipairs(self.Path:GetWaypoints()) do
+					table.insert(wps, w.Position)
+				end
+				self.Waypoints = wps
+				self.WaypointIndex = 2
+			else
+				self.Waypoints = nil -- no path: glide straight at them
+			end
+			task.wait(0.5)
+		else
+			self.Waypoints = nil
+			task.wait(0.25)
+		end
+	end
+end
+
+------------------------------------------------------------------ public
+
+function Monster:IsVisible()
+	return self.State ~= "Hidden" and self.State ~= "Dead"
+end
+
+function Monster:IsShootable()
+	return self.State == "Hunting" or self.State == "Visible"
+end
+
+function Monster:IsStunned()
+	return os.clock() < self.StunnedUntil
+end
+
+function Monster:GetPosition()
+	return self.CFrame.Position
+end
+
+-- Distance along a ray at which it passes within `radius` of the body, or nil.
+function Monster:RayHit(origin, unitDir, maxDist, radius)
+	if not self:IsShootable() then
+		return nil
+	end
+	local rootPos = self.CFrame.Position
+	local best
+	for _, h in ipairs({ -2.5, 1.5, 5.5 }) do
+		local c = rootPos + Vector3.new(0, h, 0)
+		local along = (c - origin):Dot(unitDir)
+		if along > 0 and along <= maxDist and (c - (origin + unitDir * along)).Magnitude <= radius then
+			if not best or along < best then
+				best = along
+			end
+		end
+	end
+	return best
+end
+
+function Monster:Appear(groundCf)
+	if self.FadeTween then
+		self.FadeTween:Cancel()
+	end
+	self.Scripted = nil
+	self.Waypoints = nil
+	self.Target = nil
+	self.HuntEndsAt = nil
+	self.StunnedUntil = 0
+	self.Fire.Enabled = false
+	self.EyeLight.Enabled = true
+	self:_setFade(0)
+	self.CFrame = self:_rootAt(groundCf)
+	self.State = "Visible"
+	self:_apply(self.CFrame)
+end
+
+function Monster:Hide()
+	if self.State == "Dead" then
+		return
+	end
+	if self.FadeTween then
+		self.FadeTween:Cancel()
+	end
+	self.Scripted = nil
+	self.State = "Hidden"
+	self.HuntEndsAt = nil
+	self.Waypoints = nil
+	self.Target = nil
+	self.StunnedUntil = 0
+	self.Fire.Enabled = false
+	self.CFrame = HIDDEN
+	self:_apply(HIDDEN)
+	self:_setFade(0)
+end
+
+-- Rises out of the ground or water at groundCf over `duration` seconds.
+function Monster:Rise(groundCf, duration, done)
+	self:Appear(groundCf)
+	local to = self.CFrame
+	local from = to * CFrame.new(0, -14, 0)
+	self.CFrame = from
+	self.Scripted = { From = from, To = to, Start = os.clock(), Duration = duration, Done = done }
+end
+
+function Monster:StartHunt(duration)
+	if self.State ~= "Visible" and self.State ~= "Hunting" then
+		return
+	end
+	self.Scripted = nil
+	self.State = "Hunting"
+	self.HuntEndsAt = duration and (os.clock() + duration) or nil
+end
+
+-- Loses interest: glides away (to `destination`, or away from everyone) while fading out.
+function Monster:EndHunt(destination)
+	if self.State ~= "Hunting" and self.State ~= "Visible" then
+		return
+	end
+	self.State = "Leaving"
+	self.HuntEndsAt = nil
+	self.Waypoints = nil
+	local feet = self:_feet()
+	if not destination then
+		local away = Vector3.zero
+		for _, t in ipairs(self.GetTargets()) do
+			away += (feet - t.Root.Position) * Vector3.new(1, 0, 1)
+		end
+		away = away.Magnitude > 0.1 and away.Unit or Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+		destination = feet + away * 40
+	end
+	local duration = math.clamp((destination - feet).Magnitude / 10, 2, 6)
+	local flat = Vector3.new(destination.X, feet.Y, destination.Z)
+	local toRoot = destination + Vector3.new(0, ROOT_HEIGHT, 0)
+	local look = (flat - feet).Magnitude > 0.1 and CFrame.lookAt(toRoot, toRoot + (flat - feet).Unit) or CFrame.new(toRoot)
+	self:_fadeTo(1, math.min(duration, 3), math.max(0, duration - 3))
+	self.Scripted = {
+		From = self.CFrame,
+		To = look,
+		Start = os.clock(),
+		Duration = duration,
+		Done = function()
+			if self.State == "Leaving" then
+				self:Hide()
+				if self.OnHuntEnded then
+					self.OnHuntEnded()
+				end
+			end
+		end,
+	}
+end
+
+-- A flare hit. Returns "ignored", "stunned" or "downed".
+function Monster:FlareHit()
+	if not self:IsShootable() then
+		return "ignored"
+	end
+	local now = os.clock()
+	self.StunnedUntil = now + M.StunTime
+	self.Fire.Enabled = true
+	task.delay(M.StunTime, function()
+		if os.clock() >= self.StunnedUntil and self.State ~= "Downed" and self.State ~= "Dead" then
+			self.Fire.Enabled = false
+		end
+	end)
+	task.spawn(function()
+		for i = 1, 6 do
+			for _, e in ipairs(self.Eyes) do
+				e.Transparency = i % 2 == 1 and 1 or math.max(0, self.Fade)
+			end
+			task.wait(0.08)
+		end
+	end)
+	if self.State ~= "Hunting" then
+		return "stunned"
+	end
+	self.Hits += 1
+	if self.Hits >= M.HitsToDown then
+		self:Down()
+		return "downed"
+	end
+	return "stunned"
+end
+
+-- Knocked down: bursts into flames and fades. The Director decides when it comes back.
+function Monster:Down()
+	self.State = "Downed"
+	self.HuntEndsAt = nil
+	self.Scripted = nil
+	self.Waypoints = nil
+	self.Hits = 0
+	self.Fire.Enabled = true
+	self.Fire.Size = 12
+	self:_fadeTo(1, 2.5)
+	task.delay(2.8, function()
+		if self.State == "Downed" then
+			self.Fire.Size = 7
+			self:Hide()
+		end
+	end)
+	if self.OnDowned then
+		task.spawn(self.OnDowned)
+	end
+end
+
+-- Destroyed for good: burns from the inside, eyes flicker out, crumbles to ash.
+function Monster:Die(done)
+	self.State = "Dead"
+	self.Scripted = nil
+	self.HuntEndsAt = nil
+	self.Fire.Enabled = true
+	self.Fire.Size = 15
+	self.Fire.Heat = 20
+	self:_setFade(0)
+	task.spawn(function()
+		for i = 1, 10 do
+			for _, e in ipairs(self.Eyes) do
+				e.Transparency = i % 2 == 0 and 0 or 1
+			end
+			self.EyeLight.Enabled = i % 2 == 0
+			task.wait(0.16)
+		end
+		for _, e in ipairs(self.Eyes) do
+			e.Color = Color3.fromRGB(30, 30, 30)
+			e.Material = Enum.Material.SmoothPlastic
+		end
+		self.EyeLight.Enabled = false
+		task.wait(0.6)
+		for _, p in ipairs(self.Parts) do
+			if p ~= self.Root then
+				p.Color = Color3.fromRGB(72, 70, 68)
+				p.Material = Enum.Material.Slate
+				p.Anchored = false
+				p.CanCollide = true
+				p.AssemblyLinearVelocity = Vector3.new(math.random(-6, 6), math.random(0, 8), math.random(-6, 6))
+			end
+		end
+		task.wait(1.5)
+		self:_fadeTo(1, 2.5)
+		task.wait(2.6)
+		self.Fire.Enabled = false
+		if done then
+			done()
+		end
+	end)
+end
+
+function Monster:Destroy()
+	self.Alive = false
+	if self.Conn then
+		self.Conn:Disconnect()
+	end
+	self.Model:Destroy()
+end
+
+return Monster
+]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="StarterPlayer" referent="RBX00000011">
+<Properties>
+<string name="Name">StarterPlayer</string>
+<bool name="EnableMouseLockOption">false</bool>
+</Properties>
+<Item class="StarterPlayerScripts" referent="RBX00000010">
+<Properties>
+<string name="Name">StarterPlayerScripts</string>
+</Properties>
+<Item class="Folder" referent="RBX0000000F">
+<Properties>
+<string name="Name">Client</string>
+</Properties>
+<Item class="LocalScript" referent="RBX0000000D">
+<Properties>
+<string name="Name">Main</string>
+<ProtectedString name="Source"><![CDATA[-- HEADCOUNT client: HUD, sounds, controls (run, flashlight, flare gun), camera effects, spectating, shop.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
+local Debris = game:GetService("Debris")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local mouse = player:GetMouse()
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Story = require(Shared:WaitForChild("Story"))
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local UI = require(script.Parent:WaitForChild("UI"))
+
+local isTouch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local ui = UI.build(player:WaitForChild("PlayerGui"), isTouch)
+
+local effects = Instance.new("Folder")
+effects.Name = "LocalEffects"
+effects.Parent = workspace
+mouse.TargetFilter = effects
+
+task.spawn(function()
+	for _ = 1, 10 do
+		if pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", false) then
+			break
+		end
+		task.wait(1)
+	end
+end)
+
+------------------------------------------------------------------ sound
+
+local function playSound(key, pos, volume)
+	local def = Config.Sounds[key]
+	if not def or def.Id == "" then
+		return nil
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = def.Id
+	s.Volume = (def.Volume or 1) * (volume or 1)
+	s.PlaybackSpeed = def.Speed or 1
+	if pos then
+		local a = Instance.new("Attachment")
+		a.Parent = workspace.Terrain
+		a.WorldPosition = pos
+		s.RollOffMode = Enum.RollOffMode.InverseTapered
+		s.RollOffMinDistance = 12
+		s.RollOffMaxDistance = def.Range or 260
+		s.Parent = a
+		Debris:AddItem(a, 12)
+	else
+		s.Parent = SoundService
+		Debris:AddItem(s, 12)
+	end
+	s:Play()
+	return s
+end
+
+local function loopSound(key)
+	local def = Config.Sounds[key]
+	if not def or def.Id == "" then
+		return nil
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = def.Id
+	s.Looped = true
+	s.Volume = def.Volume or 1
+	s.PlaybackSpeed = def.Speed or 1
+	s.Parent = SoundService
+	s:Play()
+	return s
+end
+
+loopSound("Ambience")
+local heartbeat = loopSound("Heartbeat")
+if heartbeat then
+	heartbeat.Volume = 0
+end
+
+------------------------------------------------------------------ camera shake
+
+local shakeUntil, shakeMag, dangerShake = 0, 0, 0
+
+local function shake(magnitude, seconds)
+	local now = os.clock()
+	shakeMag = now < shakeUntil and math.max(shakeMag, magnitude) or magnitude
+	shakeUntil = math.max(shakeUntil, now + seconds)
+end
+
+RunService:BindToRenderStep("HeadcountShake", Enum.RenderPriority.Camera.Value + 1, function()
+	local mag = os.clock() < shakeUntil and shakeMag or 0
+	mag = math.max(mag, dangerShake)
+	if mag > 0 then
+		camera.CFrame = camera.CFrame * CFrame.Angles(math.rad((math.random() - 0.5) * mag * 3), math.rad((math.random() - 0.5) * mag * 3), 0)
+	end
+end)
+
+local function whistles(pos, distant)
+	task.spawn(function()
+		for _ = 1, 3 do
+			playSound("Whistle", (not distant) and pos or nil, distant and 0.3 or 1)
+			task.wait(0.55)
+		end
+	end)
+	shake(distant and 0.1 or 0.3, 0.6)
+end
+
+------------------------------------------------------------------ flares (visuals)
+
+local function flareVisual(origin, hitPos, kind)
+	local dist = (hitPos - origin).Magnitude
+	local travel = math.max(dist / Config.FlareSpeed, 0.05)
+	local ball = Instance.new("Part")
+	ball.Shape = Enum.PartType.Ball
+	ball.Size = Vector3.new(0.7, 0.7, 0.7)
+	ball.Material = Enum.Material.Neon
+	ball.Color = Color3.fromRGB(255, 110, 50)
+	ball.Anchored = true
+	ball.CanCollide = false
+	ball.CanQuery = false
+	ball.CanTouch = false
+	ball.CastShadow = false
+	ball.CFrame = CFrame.new(origin)
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(255, 120, 60)
+	glow.Range = 18
+	glow.Brightness = 3
+	glow.Shadows = true
+	glow.Parent = ball
+	local fire = Instance.new("Fire")
+	fire.Size = 2
+	fire.Heat = 6
+	fire.Color = Color3.fromRGB(255, 140, 50)
+	fire.SecondaryColor = Color3.fromRGB(255, 50, 0)
+	fire.Parent = ball
+	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+	a0.Position, a1.Position = Vector3.new(0, 0.25, 0), Vector3.new(0, -0.25, 0)
+	a0.Parent, a1.Parent = ball, ball
+	local trail = Instance.new("Trail")
+	trail.Attachment0, trail.Attachment1 = a0, a1
+	trail.Lifetime = 0.35
+	trail.LightEmission = 1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 170, 80), Color3.fromRGB(255, 60, 20))
+	trail.Transparency = NumberSequence.new(0, 1)
+	trail.Parent = ball
+	ball.Parent = effects
+	playSound("FlareFire", origin)
+	TweenService:Create(ball, TweenInfo.new(travel, Enum.EasingStyle.Linear), { CFrame = CFrame.new(hitPos) }):Play()
+	task.delay(travel, function()
+		if kind == "monster" or kind == "roster" then
+			glow.Range, glow.Brightness, fire.Size = 28, 6, 7
+			if (hitPos - camera.CFrame.Position).Magnitude < 60 then
+				shake(0.25, 0.3)
+			end
+			Debris:AddItem(ball, 0.6)
+		elseif kind == "air" then
+			Debris:AddItem(ball, 0.2)
+		else
+			-- a flare burning on the ground for a while
+			trail.Enabled = false
+			Debris:AddItem(ball, 9)
+			local started = os.clock()
+			while ball.Parent and os.clock() - started < 9 do
+				glow.Brightness = 2.2 + math.random() * 1.6
+				task.wait(0.08)
+			end
+		end
+	end)
+end
+
+------------------------------------------------------------------ flare gun input
+
+local hooked = setmetatable({}, { __mode = "k" })
+local lastFire = 0
+
+local function fireFlare()
+	if player:GetAttribute("Counted") then
+		return
+	end
+	local now = os.clock()
+	if now - lastFire < Config.FlareCooldown then
+		return
+	end
+	lastFire = now
+	if (player:GetAttribute("Flares") or 0) <= 0 then
+		ui.Toast("Out of flares! Find a red flare box.", Color3.fromRGB(255, 90, 90))
+		return
+	end
+	local ray = camera:ScreenPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character, effects }
+	local result = workspace:Raycast(ray.Origin, ray.Direction * 500, params)
+	Remotes.FireFlare:FireServer(result and result.Position or (ray.Origin + ray.Direction * 500))
+end
+
+local hasGun = false
+local function refreshFlares()
+	ui.SetFlares(player:GetAttribute("Flares") or 0, hasGun)
+end
+
+local function hookTool(tool)
+	if not tool:IsA("Tool") or tool.Name ~= "Flare Gun" or hooked[tool] then
+		return
+	end
+	hooked[tool] = true
+	hasGun = true
+	refreshFlares()
+	tool.Activated:Connect(fireFlare)
+	tool.Equipped:Connect(function()
+		mouse.Icon = "rbxasset://textures/GunCursor.png"
+	end)
+	tool.Unequipped:Connect(function()
+		mouse.Icon = ""
+	end)
+end
+
+local function watch(container)
+	for _, c in ipairs(container:GetChildren()) do
+		hookTool(c)
+	end
+	container.ChildAdded:Connect(hookTool)
+end
+
+------------------------------------------------------------------ run + flashlight
+
+local sprinting, exhausted = false, false
+local stamina = Config.StaminaMax
+local flashlightOn = true
+
+ContextActionService:BindAction("HeadcountRun", function(_, state)
+	if state == Enum.UserInputState.Begin then
+		sprinting = true
+	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+		sprinting = false
+	end
+	return Enum.ContextActionResult.Pass
+end, true, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL3)
+ContextActionService:SetTitle("HeadcountRun", "RUN")
+ContextActionService:SetPosition("HeadcountRun", UDim2.new(1, -190, 1, -130))
+
+ContextActionService:BindAction("HeadcountLight", function(_, state)
+	if state == Enum.UserInputState.Begin then
+		flashlightOn = not flashlightOn
+		Remotes.Flashlight:FireServer(flashlightOn)
+		playSound("Pickup", nil, 0.4)
+	end
+	return Enum.ContextActionResult.Pass
+end, true, Enum.KeyCode.F, Enum.KeyCode.ButtonY)
+ContextActionService:SetTitle("HeadcountLight", "LIGHT")
+ContextActionService:SetPosition("HeadcountLight", UDim2.new(1, -250, 1, -70))
+
+player.CharacterAdded:Connect(function(char)
+	flashlightOn = true
+	stamina = Config.StaminaMax
+	hasGun = false
+	refreshFlares()
+	watch(char)
+	watch(player:WaitForChild("Backpack"))
+end)
+if player.Character then
+	watch(player.Character)
+	watch(player:WaitForChild("Backpack"))
+end
+
+------------------------------------------------------------------ spectating
+
+local spectateIndex = 1
+
+local function spectate(step)
+	if not player:GetAttribute("Counted") then
+		return
+	end
+	local others = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+		if p ~= player and not p:GetAttribute("Counted") and hum and hum.Health > 0 then
+			table.insert(others, { Player = p, Humanoid = hum })
+		end
+	end
+	if #others == 0 then
+		ui.SetSpectating(nil)
+		return
+	end
+	spectateIndex = ((spectateIndex - 1 + (step or 0)) % #others) + 1
+	local t = others[spectateIndex]
+	camera.CameraSubject = t.Humanoid
+	ui.SetSpectating(t.Player.DisplayName)
+end
+
+ui.OnSpectate = spectate
+ui.OnSecondChance = function()
+	if Config.Products.SecondChance ~= 0 then
+		MarketplaceService:PromptProductPurchase(player, Config.Products.SecondChance)
+	else
+		ui.Toast("Second Chance isn't set up yet (Config.Products.SecondChance)")
+	end
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		spectate(0)
+	end
+end)
+
+------------------------------------------------------------------ monster proximity, sighting, stamina
+
+local monsterModel
+local function getMonster()
+	if monsterModel and monsterModel.Parent then
+		return monsterModel
+	end
+	local camp = workspace:FindFirstChild("Camp")
+	monsterModel = camp and camp:FindFirstChild("TheTwelfth")
+	return monsterModel
+end
+
+local danger, seenFor, reported = 0, 0, false
+
+RunService.Heartbeat:Connect(function(dt)
+	local m = getMonster()
+	local root = m and m.PrimaryPart
+	local target = 0
+	if root and root.Position.Y > -100 then
+		local d = (root.Position - camera.CFrame.Position).Magnitude
+		target = math.clamp(1 - (d - 8) / 50, 0, 1)
+	end
+	danger += (target - danger) * math.min(1, dt * 4)
+	ui.SetDanger(danger)
+	dangerShake = danger > 0.55 and (danger - 0.55) * 0.5 or 0
+	if heartbeat then
+		heartbeat.Volume = danger * Config.Sounds.Heartbeat.Volume
+	end
+
+	-- the first sighting: it's there... look away and it's gone
+	if ReplicatedStorage:GetAttribute("Phase") == "Sighting" then
+		local head = m and m:FindFirstChild("Head")
+		if head and not reported then
+			local p, onScreen = camera:WorldToViewportPoint(head.Position)
+			if onScreen and p.Z > 0 then
+				seenFor += dt
+			elseif seenFor > 0.6 then
+				reported = true
+				Remotes.LookedAway:FireServer()
+			end
+		end
+	else
+		seenFor, reported = 0, false
+	end
+
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum and hum.Health > 0 then
+		local running = sprinting and not exhausted and hum.MoveDirection.Magnitude > 0.1
+		if running then
+			stamina = math.max(0, stamina - Config.StaminaDrain * dt)
+			if stamina <= 0 then
+				exhausted = true
+			end
+		else
+			stamina = math.min(Config.StaminaMax, stamina + Config.StaminaRegen * dt)
+			if exhausted and stamina > Config.StaminaMax * 0.3 then
+				exhausted = false
+			end
+		end
+		hum.WalkSpeed = running and Config.SprintSpeed or Config.WalkSpeed
+		ui.SetStamina(stamina / Config.StaminaMax)
+	end
+end)
+
+------------------------------------------------------------------ server events
+
+Remotes.Dialogue.OnClientEvent:Connect(function(speaker, text, seconds)
+	ui.ShowSubtitle(speaker, text, seconds)
+	local spk = Story.Speakers[speaker]
+	if spk and spk.Radio then
+		playSound("Radio", nil, 0.6)
+	end
+end)
+
+Remotes.PageFound.OnClientEvent:Connect(function(index, title, text, count, total)
+	ui.ShowPage(index, title, text, count, total)
+end)
+
+Remotes.Notify.OnClientEvent:Connect(function(text, color)
+	ui.Toast(text, color)
+end)
+
+Remotes.Effect.OnClientEvent:Connect(function(kind, a, b, c)
+	if kind == "Sound" then
+		playSound(a, b, c)
+	elseif kind == "Whistles" then
+		whistles(a, b)
+	elseif kind == "Shake" then
+		shake(a, b)
+	elseif kind == "Flash" then
+		ui.Flash(a, b)
+	elseif kind == "ScreenText" then
+		ui.ShowScreenText(a, b, c)
+	elseif kind == "Chapter" then
+		ui.ShowChapter(a)
+	elseif kind == "Jumpscare" then
+		ui.Jumpscare()
+		playSound("Jumpscare")
+		shake(1.2, 1)
+	elseif kind == "Flare" then
+		flareVisual(a, b, c)
+	elseif kind == "Fade" then
+		ui.Fade(a, b)
+	elseif kind == "Blink" then
+		ui.Blink()
+	elseif kind == "Ending" then
+		ui.ShowEnding(a, b)
+	elseif kind == "Roster" then
+		ui.ShowRoster(a)
+	end
+end)
+
+------------------------------------------------------------------ state
+
+local function refreshState()
+	ui.SetObjective(ReplicatedStorage:GetAttribute("Objective") or "")
+	ui.SetPages(ReplicatedStorage:GetAttribute("Pages") or 0, Config.TotalPages)
+end
+ReplicatedStorage:GetAttributeChangedSignal("Objective"):Connect(refreshState)
+ReplicatedStorage:GetAttributeChangedSignal("Pages"):Connect(refreshState)
+ReplicatedStorage:GetAttributeChangedSignal("Phase"):Connect(function()
+	if ReplicatedStorage:GetAttribute("Phase") ~= "Ending" then
+		ui.HideEnding()
+	end
+end)
+refreshState()
+
+player:GetAttributeChangedSignal("Flares"):Connect(refreshFlares)
+player:GetAttributeChangedSignal("Counted"):Connect(function()
+	local counted = player:GetAttribute("Counted") == true
+	ui.SetCounted(counted)
+	if counted then
+		task.delay(1.5, spectate, 0)
+	end
+end)
+
+------------------------------------------------------------------ shop + VIP tag
+
+local shopItems = {
+	{ Name = "Survivor Kit", Description = "+2 starting flares every night and a stronger flashlight.", Kind = "Pass", Id = Config.GamePasses.SurvivorKit },
+	{ Name = "VIP", Description = "Golden flashlight beam and a [VIP] chat tag.", Kind = "Pass", Id = Config.GamePasses.VIP },
+	{ Name = "Flare Pack", Description = string.format("+%d flares right now.", Config.FlarePackAmount), Kind = "Product", Id = Config.Products.FlarePack },
+	{ Name = "Second Chance", Description = "Revive instantly after being counted.", Kind = "Product", Id = Config.Products.SecondChance },
+}
+local setPrice = ui.BuildShop(shopItems, function(item)
+	if item.Id == 0 then
+		ui.Toast(item.Name .. " isn't set up yet (add its ID in Config)")
+	elseif item.Kind == "Pass" then
+		MarketplaceService:PromptGamePassPurchase(player, item.Id)
+	else
+		MarketplaceService:PromptProductPurchase(player, item.Id)
+	end
+end)
+for i, item in ipairs(shopItems) do
+	if item.Id ~= 0 then
+		task.spawn(function()
+			local infoType = item.Kind == "Pass" and Enum.InfoType.GamePass or Enum.InfoType.Product
+			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, item.Id, infoType)
+			if ok and info and info.PriceInRobux then
+				setPrice(i, "R$ " .. info.PriceInRobux)
+			end
+		end)
+	end
+end
+
+TextChatService.OnIncomingMessage = function(message)
+	local props = Instance.new("TextChatMessageProperties")
+	local source = message.TextSource
+	local sender = source and Players:GetPlayerByUserId(source.UserId)
+	if sender and sender:GetAttribute("VIP") then
+		props.PrefixText = '<font color="#FFD24A">[VIP]</font> ' .. message.PrefixText
+	end
+	return props
+end
+
+------------------------------------------------------------------ start
+
+ui.Intro(Story.Quote, Story.QuoteSource)
+ui.Fade(1, 2.5)
+]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX0000000E">
+<Properties>
+<string name="Name">UI</string>
+<ProtectedString name="Source"><![CDATA[-- Builds the HEADCOUNT HUD in code and returns functions that drive it.
+
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Story = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Story"))
+
+local UI = {}
+
+local INK = Color3.fromRGB(235, 228, 214)
+local RED = Color3.fromRGB(220, 35, 35)
+local PANEL = Color3.fromRGB(10, 10, 12)
+local PARCHMENT = Color3.fromRGB(226, 214, 182)
+local DARK_INK = Color3.fromRGB(40, 32, 26)
+
+local function new(className, props, children)
+	local inst = Instance.new(className)
+	for k, v in pairs(props) do
+		if k ~= "Parent" then
+			inst[k] = v
+		end
+	end
+	for _, c in ipairs(children or {}) do
+		c.Parent = inst
+	end
+	inst.Parent = props.Parent
+	return inst
+end
+
+local function corner(r)
+	return new("UICorner", { CornerRadius = UDim.new(0, r or 8) })
+end
+
+local function pad(px)
+	return new("UIPadding", {
+		PaddingLeft = UDim.new(0, px),
+		PaddingRight = UDim.new(0, px),
+		PaddingTop = UDim.new(0, px),
+		PaddingBottom = UDim.new(0, px),
+	})
+end
+
+local function list(padding, align)
+	return new("UIListLayout", {
+		Padding = UDim.new(0, padding or 4),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = align or Enum.HorizontalAlignment.Left,
+	})
+end
+
+local function label(props, children)
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	props.TextColor3 = props.TextColor3 or INK
+	props.Font = props.Font or Enum.Font.SpecialElite
+	return new("TextLabel", props, children)
+end
+
+local function escape(text)
+	return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+local typing = {}
+local function typewrite(textLabel, text, perChar)
+	local token = {}
+	typing[textLabel] = token
+	textLabel.Text = text
+	textLabel.MaxVisibleGraphemes = 0
+	task.spawn(function()
+		for i = 1, utf8.len(text) or #text do
+			if typing[textLabel] ~= token then
+				return
+			end
+			textLabel.MaxVisibleGraphemes = i
+			task.wait(perChar)
+		end
+		textLabel.MaxVisibleGraphemes = -1
+	end)
+end
+
+local EDGE_FADE = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+local EDGES = {
+	{ UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.28), 90 },
+	{ UDim2.fromScale(0, 0.72), UDim2.fromScale(1, 0.28), -90 },
+	{ UDim2.fromScale(0, 0), UDim2.fromScale(0.22, 1), 0 },
+	{ UDim2.fromScale(0.78, 0), UDim2.fromScale(0.22, 1), 180 },
+}
+
+function UI.build(playerGui, isTouch)
+	local api = {}
+	local gui = new("ScreenGui", {
+		Name = "HeadcountUI",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = playerGui,
+	})
+
+	------------------------------------------------------------ vignette
+	local function edgeSet(color, z)
+		local frames = {}
+		for _, e in ipairs(EDGES) do
+			local f = new("Frame", { BackgroundColor3 = color, BackgroundTransparency = 1, BorderSizePixel = 0, Position = e[1], Size = e[2], ZIndex = z, Parent = gui })
+			new("UIGradient", { Rotation = e[3], Transparency = EDGE_FADE, Parent = f })
+			table.insert(frames, f)
+		end
+		return function(alpha)
+			for _, f in ipairs(frames) do
+				f.BackgroundTransparency = 1 - alpha
+			end
+		end
+	end
+	local setBlack = edgeSet(Color3.new(0, 0, 0), 1)
+	local setRed = edgeSet(Color3.fromRGB(150, 0, 0), 2)
+	setBlack(0.6)
+	function api.SetDanger(level)
+		local pulse = 0.75 + 0.25 * math.sin(os.clock() * (6 + level * 6))
+		setRed(math.clamp(level * 0.75 * pulse, 0, 0.85))
+	end
+
+	------------------------------------------------------------ objective panel
+	local panel = new("Frame", {
+		BackgroundColor3 = PANEL,
+		BackgroundTransparency = 0.35,
+		Position = UDim2.new(0, 16, 0, 64),
+		Size = UDim2.new(0, 310, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		ZIndex = 5,
+		Parent = gui,
+	}, { corner(6), pad(10), list(4) })
+	label({ Text = "OBJECTIVE", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.fromRGB(150, 150, 150), Size = UDim2.new(1, 0, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = panel })
+	local objective = label({ Text = "", TextSize = 17, TextWrapped = true, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2, Parent = panel })
+	local pages = label({ Text = "PAGES 0/8", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.fromRGB(230, 200, 140), Size = UDim2.new(1, 0, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 3, Parent = panel })
+	local flares = label({ Text = "", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = Color3.fromRGB(255, 130, 70), Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4, Parent = panel })
+
+	function api.SetObjective(text)
+		objective.Text = text
+	end
+	function api.SetPages(n, total)
+		pages.Text = string.format("PAGES %d/%d", n, total)
+	end
+	function api.SetFlares(n, hasGun)
+		flares.Text = hasGun and string.format("FLARES  %d", n) or ""
+		flares.TextColor3 = n > 0 and Color3.fromRGB(255, 130, 70) or RED
+	end
+
+	------------------------------------------------------------ stamina
+	local stamBack = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -88), Size = UDim2.new(0, 220, 0, 5), BackgroundColor3 = Color3.fromRGB(20, 20, 20), BackgroundTransparency = 0.3, Visible = false, Parent = gui }, { corner(3) })
+	local stamFill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = INK, Parent = stamBack }, { corner(3) })
+	function api.SetStamina(f)
+		stamFill.Size = UDim2.fromScale(f, 1)
+		stamFill.BackgroundColor3 = f < 0.25 and RED or INK
+		stamBack.Visible = f < 0.995
+	end
+
+	------------------------------------------------------------ subtitles
+	local sub = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -110),
+		Size = UDim2.new(0.72, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.4,
+		Visible = false,
+		ZIndex = 6,
+		Parent = gui,
+	}, { corner(6), pad(10), list(2), new("UISizeConstraint", { MaxSize = Vector2.new(780, math.huge) }) })
+	local subSpeaker = label({ Text = "", Font = Enum.Font.GothamBold, TextSize = 13, Size = UDim2.new(1, 0, 0, 15), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = sub })
+	local subText = label({ Text = "", TextSize = 20, RichText = true, TextWrapped = true, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2, Parent = sub })
+	local subToken = 0
+	function api.ShowSubtitle(speakerKey, text, seconds)
+		local spk = Story.Speakers[speakerKey] or Story.Speakers.SOUND
+		subToken += 1
+		local token = subToken
+		subSpeaker.Text = spk.Label
+		subSpeaker.Visible = spk.Label ~= ""
+		subSpeaker.TextColor3 = spk.Color
+		subText.TextColor3 = (speakerKey == "MARCY" or speakerKey == "THOUGHT") and INK or spk.Color
+		local body = escape(text)
+		subText.Font = speakerKey == "TWELFTH" and Enum.Font.Creepster or Enum.Font.SpecialElite
+		subText.TextSize = speakerKey == "TWELFTH" and 34 or 20
+		sub.Visible = true
+		typewrite(subText, spk.Italic and ("<i>" .. body .. "</i>") or body, 0.018)
+		task.delay((seconds or 3) + 0.4, function()
+			if subToken == token then
+				sub.Visible = false
+			end
+		end)
+	end
+
+	------------------------------------------------------------ toasts
+	local toasts = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0, 460, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, ZIndex = 8, Parent = gui }, { list(6, Enum.HorizontalAlignment.Center) })
+	local toastCount = 0
+	function api.Toast(text, color)
+		toastCount += 1
+		local t = label({
+			Text = text,
+			Font = Enum.Font.GothamBold,
+			TextSize = 17,
+			TextColor3 = color or INK,
+			BackgroundColor3 = PANEL,
+			BackgroundTransparency = 0.3,
+			AutomaticSize = Enum.AutomaticSize.XY,
+			Size = UDim2.new(0, 0, 0, 0),
+			LayoutOrder = toastCount,
+			Parent = toasts,
+		})
+		corner(6).Parent = t
+		pad(8).Parent = t
+		task.delay(3.6, function()
+			local tw = TweenService:Create(t, TweenInfo.new(0.5), { TextTransparency = 1, BackgroundTransparency = 1 })
+			tw:Play()
+			tw.Completed:Wait()
+			t:Destroy()
+		end)
+	end
+
+	------------------------------------------------------------ fade / flash
+	local fade = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, ZIndex = 15, Parent = gui })
+	function api.Fade(target, seconds)
+		TweenService:Create(fade, TweenInfo.new(seconds or 1), { BackgroundTransparency = target }):Play()
+	end
+	function api.Blink()
+		fade.BackgroundTransparency = 0
+		api.Fade(1, 0.8)
+	end
+	local flash = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 14, Parent = gui })
+	function api.Flash(color, seconds)
+		flash.BackgroundColor3 = color or Color3.new(1, 1, 1)
+		flash.BackgroundTransparency = 0.35
+		TweenService:Create(flash, TweenInfo.new(seconds or 0.4), { BackgroundTransparency = 1 }):Play()
+	end
+
+	------------------------------------------------------------ screen text & chapter cards
+	local screenSize = new("UITextSizeConstraint", { MaxTextSize = 44 })
+	local screenText = label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.new(0.9, 0, 0, 150), TextScaled = true, TextWrapped = true, TextTransparency = 1, Text = "", ZIndex = 20, Parent = gui }, { screenSize })
+	local screenToken = 0
+	function api.ShowScreenText(text, seconds, style)
+		screenToken += 1
+		local token = screenToken
+		local title = style == "title"
+		screenText.Font = title and Enum.Font.Creepster or Enum.Font.SpecialElite
+		screenText.TextColor3 = title and RED or INK
+		screenSize.MaxTextSize = title and 80 or 40
+		screenText.Text = text
+		TweenService:Create(screenText, TweenInfo.new(0.8), { TextTransparency = 0 }):Play()
+		task.delay(seconds or 4, function()
+			if screenToken == token then
+				TweenService:Create(screenText, TweenInfo.new(1.2), { TextTransparency = 1 }):Play()
+			end
+		end)
+	end
+
+	local chapter = label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.17, 0), Size = UDim2.new(0.9, 0, 0, 40), TextSize = 30, TextTransparency = 1, Text = "", ZIndex = 20, Parent = gui })
+	local chapterToken = 0
+	function api.ShowChapter(text)
+		chapterToken += 1
+		local token = chapterToken
+		chapter.Text = text
+		TweenService:Create(chapter, TweenInfo.new(1), { TextTransparency = 0 }):Play()
+		task.delay(4, function()
+			if chapterToken == token then
+				TweenService:Create(chapter, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+			end
+		end)
+	end
+
+	------------------------------------------------------------ journal page popup
+	local pageFrame = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.47),
+		Size = UDim2.new(0.9, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = PARCHMENT,
+		Rotation = -1.2,
+		Visible = false,
+		ZIndex = 12,
+		Parent = gui,
+	}, { corner(4), pad(22), list(8), new("UISizeConstraint", { MaxSize = Vector2.new(480, math.huge) }) })
+	local pageTitle = label({ Font = Enum.Font.IndieFlower, TextSize = 30, TextColor3 = DARK_INK, Size = UDim2.new(1, 0, 0, 34), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = pageFrame })
+	local pageBody = label({ Font = Enum.Font.IndieFlower, TextSize = 22, TextColor3 = DARK_INK, TextWrapped = true, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2, Parent = pageFrame })
+	local pageFooter = label({ Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.fromRGB(120, 100, 80), Size = UDim2.new(1, 0, 0, 16), TextXAlignment = Enum.TextXAlignment.Right, LayoutOrder = 3, Parent = pageFrame })
+	local pageClose = new("TextButton", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = "", ZIndex = 13, Parent = pageFrame })
+	local pageToken = 0
+	pageClose.Activated:Connect(function()
+		pageFrame.Visible = false
+	end)
+	function api.ShowPage(index, title, text, count, total)
+		pageToken += 1
+		local token = pageToken
+		pageTitle.Text = title
+		pageBody.Text = text
+		pageFooter.Text = index == 9 and "SECRET PAGE  ·  tap to close" or string.format("PAGE %d / %d  ·  tap to close", count, total)
+		pageFrame.Visible = true
+		task.delay(12, function()
+			if pageToken == token then
+				pageFrame.Visible = false
+			end
+		end)
+	end
+
+	------------------------------------------------------------ jumpscare
+	local scare = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), Visible = false, ZIndex = 30, Parent = gui })
+	local eyes = {}
+	for _ = 1, 2 do
+		table.insert(eyes, new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(255, 20, 20),
+			BorderSizePixel = 0,
+			Parent = scare,
+		}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }), new("UIStroke", { Color = Color3.fromRGB(255, 70, 70), Thickness = 8, Transparency = 0.35 }) }))
+	end
+	function api.Jumpscare()
+		scare.Visible = true
+		for i, e in ipairs(eyes) do
+			local side = i == 1 and -1 or 1
+			e.Size = UDim2.fromOffset(18, 7)
+			e.Position = UDim2.fromScale(0.5 + side * 0.04, 0.45)
+			TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = UDim2.fromScale(0.17, 0.06),
+				Position = UDim2.fromScale(0.5 + side * 0.15, 0.45),
+			}):Play()
+		end
+		task.delay(1.4, function()
+			scare.Visible = false
+		end)
+	end
+
+	------------------------------------------------------------ counted / spectate
+	local counted = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 18, Parent = gui })
+	label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.16), Size = UDim2.new(0.9, 0, 0, 70), Text = "YOU WERE COUNTED", Font = Enum.Font.Creepster, TextScaled = true, TextColor3 = RED, Parent = counted }, { new("UITextSizeConstraint", { MaxTextSize = 64 }) })
+	local spectating = label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.27), Size = UDim2.new(0.9, 0, 0, 24), Text = "", Font = Enum.Font.GothamBold, TextSize = 18, Parent = counted })
+	label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.31), Size = UDim2.new(0.9, 0, 0, 20), Text = "You'll return when your group reaches the next chapter.", Font = Enum.Font.Gotham, TextSize = 15, TextColor3 = Color3.fromRGB(170, 170, 170), Parent = counted })
+	local row = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -150), Size = UDim2.new(0, 420, 0, 46), BackgroundTransparency = 1, Parent = counted }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	local function button(text, width, color, order)
+		local b = new("TextButton", { Size = UDim2.new(0, width, 1, 0), BackgroundColor3 = color, Text = text, Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = INK, AutoButtonColor = true, LayoutOrder = order, Parent = row })
+		corner(8).Parent = b
+		return b
+	end
+	local prev = button("<", 46, PANEL, 1)
+	local revive = button("SECOND CHANCE", 220, Color3.fromRGB(150, 20, 20), 2)
+	local nextB = button(">", 46, PANEL, 3)
+	prev.Activated:Connect(function()
+		if api.OnSpectate then
+			api.OnSpectate(-1)
+		end
+	end)
+	nextB.Activated:Connect(function()
+		if api.OnSpectate then
+			api.OnSpectate(1)
+		end
+	end)
+	revive.Activated:Connect(function()
+		if api.OnSecondChance then
+			api.OnSecondChance()
+		end
+	end)
+	function api.SetCounted(on)
+		counted.Visible = on
+	end
+	function api.SetSpectating(name)
+		spectating.Text = name and ("Spectating " .. name) or "No one left to watch..."
+	end
+
+	------------------------------------------------------------ endings
+	local ending = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false, ZIndex = 25, Parent = gui })
+	local endTitle = label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.38), Size = UDim2.new(0.9, 0, 0, 130), Font = Enum.Font.Creepster, TextScaled = true, TextColor3 = RED, Parent = ending }, { new("UITextSizeConstraint", { MaxTextSize = 110 }) })
+	local endSub = label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.new(0.9, 0, 0, 44), TextScaled = true, Parent = ending }, { new("UITextSizeConstraint", { MaxTextSize = 34 }) })
+	label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.64), Size = UDim2.new(0.9, 0, 0, 24), Text = "Thanks for playing HEADCOUNT. If it got you, leave a like and favorite!", Font = Enum.Font.Gotham, TextSize = 16, TextColor3 = Color3.fromRGB(190, 190, 190), Parent = ending })
+
+	local roster = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0, 360, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = PARCHMENT, Visible = false, ZIndex = 24, Parent = gui }, { corner(4), pad(18), list(2) })
+	local function rosterLine(text, color, order)
+		return label({ Text = text, RichText = true, Font = Enum.Font.IndieFlower, TextSize = 20, TextColor3 = color or DARK_INK, Size = UDim2.new(1, 0, 0, 22), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = order, Parent = roster })
+	end
+
+	function api.ShowRoster(names)
+		for _, c in ipairs(roster:GetChildren()) do
+			if c:IsA("TextLabel") then
+				c:Destroy()
+			end
+		end
+		rosterLine("<b>CAMP HOLLOW PINES - ROSTER</b>", DARK_INK, 0)
+		for i, n in ipairs(Story.RosterNames) do
+			rosterLine(string.format("<s>%d. %s</s>", i, n), Color3.fromRGB(150, 25, 25), i)
+		end
+		rosterLine("12. MARCY HALE", Color3.fromRGB(150, 25, 25), 12)
+		roster.Visible = true
+		for i, n in ipairs(names) do
+			task.delay(0.6 + i * 0.8, function()
+				rosterLine(string.format("%d. %s", 12 + i, escape(n)), Color3.fromRGB(150, 25, 25), 12 + i)
+			end)
+		end
+	end
+
+	function api.ShowEnding(title, subtitle)
+		roster.Visible = false
+		ending.Visible = true
+		endTitle.Text = title
+		endSub.Text = subtitle
+		endTitle.TextTransparency = 1
+		endSub.TextTransparency = 1
+		TweenService:Create(endTitle, TweenInfo.new(1.5), { TextTransparency = 0 }):Play()
+		task.delay(1.2, function()
+			TweenService:Create(endSub, TweenInfo.new(1.5), { TextTransparency = 0 }):Play()
+		end)
+	end
+
+	function api.HideEnding()
+		ending.Visible = false
+		roster.Visible = false
+	end
+
+	------------------------------------------------------------ shop
+	local shopButton = new("TextButton", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.5, 0), Size = UDim2.new(0, 84, 0, 36), BackgroundColor3 = Color3.fromRGB(120, 20, 20), Text = "SHOP", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = INK, ZIndex = 5, Parent = gui }, { corner(8) })
+	local shop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.9, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = PANEL, BackgroundTransparency = 0.05, Visible = false, ZIndex = 22, Parent = gui }, {
+		corner(10),
+		pad(16),
+		list(10),
+		new("UISizeConstraint", { MaxSize = Vector2.new(420, math.huge) }),
+	})
+	local shopHeader = new("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, LayoutOrder = 0, Parent = shop })
+	label({ Text = "CAMP STORE", Font = Enum.Font.Creepster, TextSize = 30, TextColor3 = RED, Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = shopHeader })
+	local close = new("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 30, 0, 30), BackgroundColor3 = Color3.fromRGB(40, 40, 44), Text = "X", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = INK, Parent = shopHeader }, { corner(6) })
+	shopButton.Activated:Connect(function()
+		shop.Visible = not shop.Visible
+	end)
+	close.Activated:Connect(function()
+		shop.Visible = false
+	end)
+
+	function api.BuildShop(items, onBuy)
+		local priceLabels = {}
+		for i, item in ipairs(items) do
+			local card = new("Frame", { Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = Color3.fromRGB(28, 26, 26), LayoutOrder = i, Parent = shop }, { corner(8), pad(10) })
+			label({ Text = item.Name, Font = Enum.Font.GothamBold, TextSize = 16, Size = UDim2.new(1, -110, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+			label({ Text = item.Description, Font = Enum.Font.Gotham, TextSize = 13, TextWrapped = true, TextColor3 = Color3.fromRGB(170, 170, 170), Position = UDim2.new(0, 0, 0, 20), Size = UDim2.new(1, -110, 0, 26), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Parent = card })
+			local buy = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(1, 0.5), Size = UDim2.new(0, 96, 0, 36), BackgroundColor3 = Color3.fromRGB(30, 140, 70), Text = "BUY", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = INK, Parent = card }, { corner(8) })
+			buy.Activated:Connect(function()
+				onBuy(item)
+			end)
+			priceLabels[i] = buy
+		end
+		return function(index, text)
+			if priceLabels[index] then
+				priceLabels[index].Text = text
+			end
+		end
+	end
+
+	------------------------------------------------------------ title card
+	function api.Intro(quote, source)
+		local intro = new("CanvasGroup", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(5, 5, 6), ZIndex = 40, Parent = gui })
+		label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.33), Size = UDim2.new(0.9, 0, 0, 140), Text = "HEADCOUNT", Font = Enum.Font.Creepster, TextScaled = true, TextColor3 = RED, Parent = intro }, { new("UITextSizeConstraint", { MaxTextSize = 130 }) })
+		label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.new(0.85, 0, 0, 60), Text = quote, TextSize = 22, TextWrapped = true, Parent = intro })
+		label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.6), Size = UDim2.new(0.85, 0, 0, 20), Text = "- " .. source, Font = Enum.Font.Gotham, TextSize = 14, TextColor3 = Color3.fromRGB(150, 150, 150), Parent = intro })
+		label({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.86),
+			Size = UDim2.new(0.9, 0, 0, 20),
+			Text = isTouch and "RUN button to sprint  ·  LIGHT for flashlight  ·  tap to fire a flare" or "Shift to run  ·  F for flashlight  ·  Click to fire a flare",
+			Font = Enum.Font.Gotham,
+			TextSize = 15,
+			TextColor3 = Color3.fromRGB(150, 150, 150),
+			Parent = intro,
+		})
+		local enter = new("TextButton", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.73), Size = UDim2.new(0, 240, 0, 48), BackgroundColor3 = Color3.fromRGB(120, 20, 20), Text = "ENTER THE CAMP", Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = INK, Parent = intro }, { corner(8) })
+		local gone = false
+		local function dismiss()
+			if gone then
+				return
+			end
+			gone = true
+			local tw = TweenService:Create(intro, TweenInfo.new(1.2), { GroupTransparency = 1 })
+			tw:Play()
+			tw.Completed:Wait()
+			intro:Destroy()
+		end
+		enter.Activated:Connect(dismiss)
+		task.delay(15, dismiss)
+	end
+
+	return api
+end
+
+return UI
+]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+</Item>
+<Item class="Players" referent="RBX00000012">
+<Properties>
+<string name="Name">Players</string>
+<bool name="CharacterAutoLoads">false</bool>
+</Properties>
+</Item>
+<Item class="Lighting" referent="RBX00000013">
+<Properties>
+<string name="Name">Lighting</string>
+<token name="Technology">4</token>
+</Properties>
+</Item>
+</roblox>
